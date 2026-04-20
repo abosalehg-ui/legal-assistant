@@ -85,8 +85,6 @@ start index.html       # Windows
 * **HTML5** — هيكلة الواجهة ودعم RTL
 * **CSS3** — التصميم والتنسيق
 * **JavaScript** — منطق التطبيق والتفاعلية
-* **Claude API (Anthropic)** — تحليل الرسائل وتحسين الصياغة
-* **GitHub Pages** — الاستضافة
 
 ---
 
