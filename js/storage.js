@@ -1,0 +1,69 @@
+// إدارة الردود المحفوظة في localStorage.
+
+const KEY = 'savedResponses';
+
+export function loadSavedResponses() {
+    try {
+        return JSON.parse(localStorage.getItem(KEY) || '[]');
+    } catch {
+        return [];
+    }
+}
+
+function persist(list) {
+    localStorage.setItem(KEY, JSON.stringify(list));
+}
+
+export function addResponse(text, category = null) {
+    const list = loadSavedResponses();
+    const item = {
+        id: Date.now(),
+        text,
+        category,
+        date: new Date().toLocaleDateString('ar-SA'),
+        timestamp: Date.now(),
+        preview: text.substring(0, 100),
+    };
+    list.unshift(item);
+    persist(list);
+    return item;
+}
+
+export function deleteResponse(id) {
+    const list = loadSavedResponses().filter(r => r.id !== id);
+    persist(list);
+    return list;
+}
+
+export function findResponse(id) {
+    return loadSavedResponses().find(r => r.id === id);
+}
+
+export function computeStats(savedResponses) {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    let today = 0;
+    let week = 0;
+    const categoryCount = {};
+
+    savedResponses.forEach(r => {
+        const ts = r.timestamp || r.id || 0;
+        if (ts >= todayStart.getTime()) today++;
+        if (now - ts <= 7 * DAY) week++;
+        if (r.category) {
+            categoryCount[r.category] = (categoryCount[r.category] || 0) + 1;
+        }
+    });
+
+    const topCategory = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0];
+
+    return {
+        total: savedResponses.length,
+        today,
+        week,
+        topCategory: topCategory ? topCategory[0] : '—',
+    };
+}
