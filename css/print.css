@@ -1,0 +1,115 @@
+@media print {
+    @page {
+        size: A4;
+        margin: 1.8cm 2cm;
+    }
+
+    body {
+        background: #fff !important;
+        color: #000 !important;
+        font-family: 'Amiri', serif;
+    }
+
+    .header,
+    .btn-group,
+    .tabs,
+    .search-box,
+    .category-filter,
+    .toast,
+    .output-hint,
+    .analysis-box,
+    .modal-overlay,
+    .stats-card,
+    .icon-btn,
+    .header-actions,
+    #beneficiaryMessageCard,
+    #articlesCard,
+    #writeCard,
+    #savedCard,
+    .saved-list,
+    .empty-state {
+        display: none !important;
+    }
+
+    .main-container {
+        display: block !important;
+        padding: 0 !important;
+        max-width: none !important;
+    }
+
+    .card {
+        box-shadow: none !important;
+        border: none !important;
+        break-inside: avoid;
+        background: #fff !important;
+    }
+
+    .card-header {
+        background: none !important;
+        border-bottom: 2px solid #1a5f4a;
+        padding: 0.5rem 0 !important;
+    }
+
+    .card-header h2 {
+        color: #1a5f4a !important;
+        font-size: 1.1rem;
+    }
+
+    .card-body { padding: 0.5rem 0 !important; }
+
+    .output-box {
+        border: none !important;
+        background: #fff !important;
+        font-family: 'Amiri', serif !important;
+        font-size: 13pt;
+        line-height: 2;
+        color: #000 !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+        white-space: pre-wrap;
+    }
+
+    .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #1a5f4a;
+    }
+
+    .print-header .title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1a5f4a;
+        margin-bottom: 0.4rem;
+    }
+
+    .print-header .subtitle {
+        font-size: 0.9rem;
+        color: #555;
+    }
+
+    .print-header .date {
+        font-size: 0.85rem;
+        color: #777;
+        margin-top: 0.4rem;
+    }
+
+    .print-footer {
+        display: block !important;
+        position: fixed;
+        bottom: 1cm;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 0.75rem;
+        color: #888;
+        border-top: 1px solid #ccc;
+        padding-top: 0.3rem;
+    }
+}
+
+/* مخفية افتراضياً، تظهر فقط عند الطباعة */
+.print-header, .print-footer { display: none; }

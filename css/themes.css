@@ -1,0 +1,54 @@
+/* ===== متغيرات الثيم: فاتح وداكن ===== */
+:root {
+    --primary: #1a5f4a;
+    --primary-light: #2d8b6e;
+    --primary-dark: #0d3d2f;
+    --secondary: #c9a227;
+    --secondary-light: #e6c55a;
+    --bg-main: #f8f6f1;
+    --bg-card: #ffffff;
+    --bg-subtle: #f8f9fa;
+    --text-primary: #2c2c2c;
+    --text-secondary: #5a5a5a;
+    --text-light: #8a8a8a;
+    --text-on-primary: #ffffff;
+    --border: #e0ddd5;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+    --radius: 12px;
+    --radius-lg: 20px;
+    --focus-ring: 0 0 0 4px rgba(26, 95, 74, 0.1);
+    --gradient-card-soft: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    --gradient-template-soft: linear-gradient(135deg, #fefefe 0%, #f8f6f1 100%);
+    --gradient-output-soft: linear-gradient(135deg, #fafaf8 0%, #fff 100%);
+    --analysis-bg: linear-gradient(135deg, rgba(26, 95, 74, 0.05) 0%, rgba(201, 162, 39, 0.03) 100%);
+    --selected-bg: linear-gradient(135deg, rgba(26, 95, 74, 0.1) 0%, rgba(26, 95, 74, 0.05) 100%);
+    --hint-bg: rgba(201, 162, 39, 0.1);
+    --modal-overlay: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] {
+    --primary: #2d8b6e;
+    --primary-light: #3aa888;
+    --primary-dark: #1a5f4a;
+    --secondary: #d4af3d;
+    --secondary-light: #e6c55a;
+    --bg-main: #16191c;
+    --bg-card: #1f2326;
+    --bg-subtle: #262b2f;
+    --text-primary: #e8e8e8;
+    --text-secondary: #b8b8b8;
+    --text-light: #888888;
+    --text-on-primary: #ffffff;
+    --border: #3a4046;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+    --focus-ring: 0 0 0 4px rgba(45, 139, 110, 0.25);
+    --gradient-card-soft: linear-gradient(135deg, #262b2f 0%, #1f2326 100%);
+    --gradient-template-soft: linear-gradient(135deg, #262b2f 0%, #1f2326 100%);
+    --gradient-output-soft: linear-gradient(135deg, #1f2326 0%, #262b2f 100%);
+    --analysis-bg: linear-gradient(135deg, rgba(45, 139, 110, 0.12) 0%, rgba(212, 175, 61, 0.08) 100%);
+    --selected-bg: linear-gradient(135deg, rgba(45, 139, 110, 0.25) 0%, rgba(45, 139, 110, 0.1) 100%);
+    --hint-bg: rgba(212, 175, 61, 0.12);
+    --modal-overlay: rgba(0, 0, 0, 0.7);
+}

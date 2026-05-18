@@ -5,480 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مساعد الردود للمستفيدين | نظام المرافعات الشرعية</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #1a5f4a;
-            --primary-light: #2d8b6e;
-            --primary-dark: #0d3d2f;
-            --secondary: #c9a227;
-            --secondary-light: #e6c55a;
-            --bg-main: #f8f6f1;
-            --bg-card: #ffffff;
-            --text-primary: #2c2c2c;
-            --text-secondary: #5a5a5a;
-            --text-light: #8a8a8a;
-            --border: #e0ddd5;
-            --shadow: 0 4px 20px rgba(0,0,0,0.08);
-            --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
-            --radius: 12px;
-            --radius-lg: 20px;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Tajawal', sans-serif;
-            background: var(--bg-main);
-            color: var(--text-primary);
-            min-height: 100vh;
-            line-height: 1.8;
-        }
-
-        .header {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);
-            padding: 1.5rem 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .logo { display: flex; align-items: center; gap: 1rem; }
-
-        .logo-icon {
-            width: 50px;
-            height: 50px;
-            background: var(--secondary);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-
-        .logo-text h1 { color: #fff; font-size: 1.4rem; font-weight: 700; }
-        .logo-text span { color: var(--secondary-light); font-size: 0.85rem; }
-
-        .header-stats { display: flex; gap: 2rem; }
-        .stat-item { text-align: center; color: #fff; }
-        .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--secondary-light); }
-        .stat-label { font-size: 0.75rem; opacity: 0.9; }
-
-        .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-
-        @media (max-width: 1024px) { .main-container { grid-template-columns: 1fr; } }
-
-        .card {
-            background: var(--bg-card);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow);
-            overflow: hidden;
-        }
-
-        .card-header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            padding: 1rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .card-header h2 { color: #fff; font-size: 1.1rem; font-weight: 600; }
-        .card-header .icon { font-size: 1.3rem; }
-        .card-body { padding: 1.5rem; }
-
-        .input-group { margin-bottom: 1rem; }
-        .input-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 150px;
-            padding: 1rem;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            font-family: inherit;
-            font-size: 1rem;
-            line-height: 1.8;
-            resize: vertical;
-            transition: all 0.3s ease;
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(26, 95, 74, 0.1);
-        }
-
-        .btn-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: var(--radius);
-            font-family: inherit;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            color: #fff;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(26, 95, 74, 0.3);
-        }
-
-        .btn-secondary { background: var(--secondary); color: var(--primary-dark); }
-        .btn-secondary:hover { background: var(--secondary-light); }
-
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--primary);
-            color: var(--primary);
-        }
-        .btn-outline:hover { background: var(--primary); color: #fff; }
-
-        .articles-container {
-            max-height: 400px;
-            overflow-y: auto;
-            padding-left: 0.5rem;
-        }
-
-        .articles-container::-webkit-scrollbar { width: 6px; }
-        .articles-container::-webkit-scrollbar-track { background: var(--bg-main); border-radius: 3px; }
-        .articles-container::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 3px; }
-
-        .article-item {
-            background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
-            border: 1px solid var(--border);
-            border-right: 4px solid var(--primary);
-            border-radius: var(--radius);
-            padding: 1rem;
-            margin-bottom: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .article-item:hover {
-            transform: translateX(-5px);
-            box-shadow: var(--shadow);
-            border-right-color: var(--secondary);
-        }
-
-        .article-item.selected {
-            background: linear-gradient(135deg, rgba(26, 95, 74, 0.1) 0%, rgba(26, 95, 74, 0.05) 100%);
-            border-right-color: var(--secondary);
-        }
-
-        .article-number {
-            display: inline-block;
-            background: var(--primary);
-            color: #fff;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .article-score {
-            display: inline-block;
-            background: var(--secondary);
-            color: var(--primary-dark);
-            padding: 0.15rem 0.5rem;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin-right: 0.5rem;
-        }
-
-        .article-title { font-weight: 600; color: var(--primary-dark); margin-bottom: 0.5rem; }
-        .article-text { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; }
-
-        .article-category {
-            display: inline-block;
-            background: var(--secondary-light);
-            color: var(--primary-dark);
-            padding: 0.2rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            margin-top: 0.5rem;
-        }
-
-        .templates-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .template-card {
-            background: linear-gradient(135deg, #fefefe 0%, #f8f6f1 100%);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .template-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow);
-            border-color: var(--primary);
-        }
-
-        .template-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-        .template-name { font-weight: 600; font-size: 0.9rem; color: var(--primary-dark); }
-
-        /* ========= صندوق الرد النهائي قابل للتعديل ========= */
-        .output-box {
-            width: 100%;
-            background: linear-gradient(135deg, #fafaf8 0%, #fff 100%);
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1.5rem;
-            min-height: 250px;
-            font-family: 'Amiri', serif;
-            font-size: 1.1rem;
-            line-height: 2;
-            resize: vertical;
-            color: var(--text-primary);
-            transition: all 0.3s ease;
-        }
-
-        .output-box:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(26, 95, 74, 0.1);
-        }
-
-        .output-box::placeholder { color: var(--text-light); font-style: italic; }
-
-        .output-hint {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.75rem;
-            padding: 0.5rem 0.75rem;
-            background: rgba(201, 162, 39, 0.1);
-            border-right: 3px solid var(--secondary);
-            border-radius: 6px;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .saved-list { max-height: 300px; overflow-y: auto; }
-
-        .saved-item {
-            background: #f8f9fa;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-            position: relative;
-        }
-
-        .saved-item-preview {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .saved-item-date { font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem; }
-
-        .saved-item-actions {
-            position: absolute;
-            top: 0.5rem;
-            left: 0.5rem;
-            display: flex;
-            gap: 0.25rem;
-        }
-
-        .saved-item-actions button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1rem;
-            opacity: 0.6;
-            transition: opacity 0.2s;
-        }
-
-        .saved-item-actions button:hover { opacity: 1; }
-
-        .tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 0.5rem;
-        }
-
-        .tab-btn {
-            padding: 0.5rem 1rem;
-            background: transparent;
-            border: none;
-            border-radius: 8px 8px 0 0;
-            font-family: inherit;
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            color: var(--text-secondary);
-            transition: all 0.3s ease;
-        }
-
-        .tab-btn.active { background: var(--primary); color: #fff; }
-
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        .search-box { position: relative; margin-bottom: 1rem; }
-
-        .search-box input {
-            width: 100%;
-            padding: 0.75rem 1rem 0.75rem 2.5rem;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            font-family: inherit;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-        }
-
-        .search-box input:focus { outline: none; border-color: var(--primary); }
-
-        .search-box .search-icon {
-            position: absolute;
-            right: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-light);
-        }
-
-        .category-filter { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
-
-        .category-btn {
-            padding: 0.4rem 0.8rem;
-            background: var(--bg-main);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            font-family: inherit;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .category-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: var(--primary-dark);
-            color: #fff;
-            padding: 1rem 2rem;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-lg);
-            z-index: 1000;
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-
-        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-
-        .full-width { grid-column: 1 / -1; }
-
-        /* ========= صندوق التحليل ========= */
-        .analysis-box {
-            background: linear-gradient(135deg, rgba(26, 95, 74, 0.05) 0%, rgba(201, 162, 39, 0.03) 100%);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1rem;
-            margin-bottom: 1rem;
-            display: none;
-        }
-
-        .analysis-box.show { display: block; }
-
-        .analysis-title {
-            font-weight: 700;
-            color: var(--primary-dark);
-            margin-bottom: 0.75rem;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .tag-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.35rem; }
-
-        .tag {
-            display: inline-block;
-            padding: 0.25rem 0.7rem;
-            background: var(--primary);
-            color: #fff;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .tag.intent { background: var(--secondary); color: var(--primary-dark); }
-        .tag.entity { background: var(--primary-light); }
-        .tag.tone-complaint { background: #c0392b; color: #fff; }
-        .tag.tone-inquiry { background: #2980b9; color: #fff; }
-        .tag.tone-request { background: #8e44ad; color: #fff; }
-        .tag.tone-neutral { background: #7f8c8d; color: #fff; }
-
-        .analysis-item { margin-bottom: 0.6rem; font-size: 0.9rem; }
-        .analysis-item strong { color: var(--primary-dark); }
-
-        @media (max-width: 768px) {
-            .header-content { flex-direction: column; text-align: center; }
-            .header-stats { justify-content: center; }
-            .main-container { padding: 1rem; }
-            .btn-group { flex-direction: column; }
-            .btn { justify-content: center; }
-        }
-        @media print {
-            .header, .btn-group, .tabs, .search-box, .category-filter { display: none !important; }
-            .card { box-shadow: none; break-inside: avoid; }
-        }
-        .empty-state { text-align: center; padding: 2rem; color: var(--text-light); }
-        .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
-    </style>
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/print.css">
 </head>
 <body>
+    <div class="print-header">
+        <div class="title">⚖️ مساعد الردود للمستفيدين</div>
+        <div class="subtitle">اللوائح التنفيذية لنظام المرافعات الشرعية</div>
+        <div class="date" id="printDate"></div>
+    </div>
+
     <header class="header">
         <div class="header-content">
             <div class="logo">
@@ -488,44 +25,51 @@
                     <span>اللوائح التنفيذية لنظام المرافعات الشرعية</span>
                 </div>
             </div>
-            <div class="header-stats">
-                <div class="stat-item">
-                    <div class="stat-value" id="articlesCount">0</div>
-                    <div class="stat-label">مادة نظامية</div>
+            <div class="header-right">
+                <div class="header-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="articlesCount">0</div>
+                        <div class="stat-label">مادة نظامية</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="savedCount">0</div>
+                        <div class="stat-label">رد محفوظ</div>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="savedCount">0</div>
-                    <div class="stat-label">رد محفوظ</div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="themeToggle" title="تبديل الوضع">🌙</button>
+                    <button class="icon-btn" id="openAdminBtn" title="إدارة المواد">⚙️</button>
+                    <button class="icon-btn" id="openShortcutsBtn" title="الاختصارات">⌨️</button>
                 </div>
             </div>
         </div>
     </header>
 
     <main class="main-container">
-        <div class="card">
+        <div class="card" id="beneficiaryMessageCard">
             <div class="card-header"><span class="icon">📝</span><h2>رسالة المستفيد</h2></div>
             <div class="card-body">
                 <div class="input-group">
-                    <label>الصق رسالة المستفيد هنا:</label>
+                    <label for="beneficiaryMessage">الصق رسالة المستفيد هنا:</label>
                     <textarea id="beneficiaryMessage" placeholder="مثال: الحاقاً للمذكرة رقم 251934827 بتاريخ 20/6/1447 والتي تم اغلاقها دون حل المشكلة رغم اعتراضي على الإغلاق..."></textarea>
                 </div>
                 <div id="analysisBox" class="analysis-box">
-                    <div class="analysis-title"> نتيجة التحليل</div>
+                    <div class="analysis-title">نتيجة التحليل</div>
                     <div id="analysisContent"></div>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-primary" onclick="analyzeMessage()"><span>🔍</span> تحليل الرسالة</button>
-                    <button class="btn btn-outline" onclick="clearInput()"><span>🗑️</span> مسح</button>
+                    <button class="btn btn-primary" id="analyzeBtn"><span>🔍</span> تحليل الرسالة</button>
+                    <button class="btn btn-outline" id="clearInputBtn"><span>🗑️</span> مسح</button>
                 </div>
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" id="articlesCard">
             <div class="card-header"><span class="icon">📚</span><h2>المواد النظامية ذات الصلة</h2></div>
             <div class="card-body">
                 <div class="search-box">
                     <span class="search-icon">🔍</span>
-                    <input type="text" id="articleSearch" placeholder="ابحث في المواد..." oninput="searchArticles()">
+                    <input type="text" id="articleSearch" placeholder="ابحث في المواد...">
                 </div>
                 <div class="category-filter" id="categoryFilter">
                     <button class="category-btn active" data-category="all">الكل</button>
@@ -539,21 +83,21 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" id="writeCard">
             <div class="card-header"><span class="icon">✍️</span><h2>كتابة الرد</h2></div>
             <div class="card-body">
                 <div class="tabs">
-                    <button class="tab-btn active" data-tab="write" onclick="switchTab('write')">كتابة</button>
-                    <button class="tab-btn" data-tab="templates" onclick="switchTab('templates')">قوالب جاهزة</button>
+                    <button class="tab-btn active" data-tab="write">كتابة</button>
+                    <button class="tab-btn" data-tab="templates">قوالب جاهزة</button>
                 </div>
                 <div id="writeTab" class="tab-content active">
                     <div class="input-group">
-                        <label>اكتب ردك هنا (يمكنك الكتابة بالعامية):</label>
+                        <label for="userResponse">اكتب ردك هنا (يمكنك الكتابة بالعامية):</label>
                         <textarea id="userResponse" placeholder="مثال: اخوي تروح لموعد الجلسة اللي محدد لك وبتلاقي فيه كل التفاصيل..."></textarea>
                     </div>
                     <div class="btn-group">
-                        <button class="btn btn-secondary" onclick="improveLanguage()"><span>✨</span> تحسين الصياغة</button>
-                        <button class="btn btn-outline" onclick="addSelectedArticle()"><span>📎</span> إضافة مادة</button>
+                        <button class="btn btn-secondary" id="improveBtn"><span>✨</span> تحسين الصياغة</button>
+                        <button class="btn btn-outline" id="addArticleBtn"><span>📎</span> إضافة مادة</button>
                     </div>
                 </div>
                 <div id="templatesTab" class="tab-content">
@@ -562,7 +106,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" id="outputCard">
             <div class="card-header"><span class="icon">📤</span><h2>الرد النهائي</h2></div>
             <div class="card-body">
                 <div class="output-hint">
@@ -571,16 +115,39 @@
                 </div>
                 <textarea id="finalOutput" class="output-box" placeholder="سيظهر الرد المقترح هنا... ويمكنك التعديل عليه بحرية قبل النسخ أو الحفظ"></textarea>
                 <div class="btn-group" style="margin-top: 1rem;">
-                    <button class="btn btn-primary" onclick="copyOutput()"><span>📋</span> نسخ الرد</button>
-                    <button class="btn btn-secondary" onclick="saveResponse()"><span>💾</span> حفظ</button>
-                    <button class="btn btn-outline" onclick="clearOutput()"><span>🧹</span> مسح الرد</button>
+                    <button class="btn btn-primary" id="copyBtn"><span>📋</span> نسخ الرد</button>
+                    <button class="btn btn-secondary" id="saveBtn"><span>💾</span> حفظ</button>
+                    <button class="btn btn-outline" id="printBtn"><span>🖨️</span> طباعة</button>
+                    <button class="btn btn-outline" id="clearOutputBtn"><span>🧹</span> مسح الرد</button>
                 </div>
             </div>
         </div>
 
-        <div class="card full-width">
+        <div class="card full-width" id="savedCard">
             <div class="card-header"><span class="icon">📁</span><h2>الردود المحفوظة</h2></div>
             <div class="card-body">
+                <div class="stats-card">
+                    <div class="stat-block">
+                        <div class="value" id="statTotal">0</div>
+                        <div class="label">إجمالي الردود</div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="value" id="statToday">0</div>
+                        <div class="label">ردود اليوم</div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="value" id="statWeek">0</div>
+                        <div class="label">آخر ٧ أيام</div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="value" id="statTopCategory" style="font-size:1rem;">—</div>
+                        <div class="label">الأكثر تكراراً</div>
+                    </div>
+                </div>
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="savedSearch" placeholder="ابحث في الردود المحفوظة...">
+                </div>
                 <div class="saved-list" id="savedList">
                     <div class="empty-state">
                         <div class="icon">📭</div>
@@ -591,1055 +158,82 @@
         </div>
     </main>
 
+    <!-- Modal: إدارة المواد -->
+    <div class="modal-overlay" id="adminModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>⚙️ إدارة المواد النظامية</h2>
+                <button class="modal-close" data-close-modal>✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="fId">المعرّف (id) <span style="color:#c0392b">*</span></label>
+                        <input type="text" id="fId" placeholder="مثال: 1/100">
+                    </div>
+                    <div class="form-field">
+                        <label for="fNumber">رقم المادة <span style="color:#c0392b">*</span></label>
+                        <input type="text" id="fNumber" placeholder="مثال: المادة 1/100">
+                    </div>
+                    <div class="form-field full">
+                        <label for="fTitle">العنوان <span style="color:#c0392b">*</span></label>
+                        <input type="text" id="fTitle" placeholder="عنوان المادة">
+                    </div>
+                    <div class="form-field">
+                        <label for="fCategory">الفئة <span style="color:#c0392b">*</span></label>
+                        <input type="text" id="fCategory" placeholder="مثال: التبليغ">
+                    </div>
+                    <div class="form-field">
+                        <label for="fSourceUrl">رابط المصدر</label>
+                        <input type="url" id="fSourceUrl" placeholder="https://laws.boe.gov.sa/...">
+                    </div>
+                    <div class="form-field full">
+                        <label for="fKeywords">الكلمات المفتاحية (مفصولة بفاصلة)</label>
+                        <input type="text" id="fKeywords" placeholder="تبليغ، إشعار، حضور">
+                    </div>
+                    <div class="form-field full">
+                        <label for="fText">نص المادة <span style="color:#c0392b">*</span></label>
+                        <textarea id="fText" placeholder="نص المادة الكامل..."></textarea>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="adminSave">💾 حفظ</button>
+                    <button class="btn btn-outline" id="adminClear">🧹 مسح النموذج</button>
+                </div>
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border);">
+                <h3 style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 0.75rem;">المواد الحالية</h3>
+                <div class="admin-list" id="adminList"></div>
+            </div>
+            <div class="modal-footer">
+                <input type="file" id="adminImportFile" accept="application/json" hidden>
+                <button class="btn btn-outline" id="adminImport">📥 استيراد</button>
+                <button class="btn btn-outline" id="adminExport">📤 تصدير</button>
+                <button class="btn btn-danger" id="adminReset">↺ إعادة تعيين</button>
+                <button class="btn btn-secondary" data-close-modal>إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: الاختصارات -->
+    <div class="modal-overlay" id="shortcutsModal">
+        <div class="modal" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2>⌨️ اختصارات لوحة المفاتيح</h2>
+                <button class="modal-close" data-close-modal>✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcuts-list" id="shortcutsList"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close-modal>إغلاق</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
-    <script>
-        // ==========================================
-        // قاعدة بيانات المواد النظامية
-        // ==========================================
-        const legalArticles = [
-            { id: "1/1", number: "المادة 1/1", title: "العمل بالأنظمة السارية", text: "يعمل بالأنظمة، والقرارات، والتعليمات السارية الصادرة من مختص والتي لا تتعارض مع هذا النظام.", category: "أحكام عامة", keywords: ["أنظمة", "قرارات", "تعليمات", "سارية", "عمل"] },
-            { id: "1/3", number: "المادة 1/3", title: "المصلحة في الطلب", text: "تستظهر الدائرة وجود مصلحة للطالب من جلب نفع أو دفع ضرر، وترد ما لا مصلحة فيه، سواء أكان الطلب أصلياً أم عارضاً.", category: "أحكام عامة", keywords: ["مصلحة", "طلب", "نفع", "ضرر", "رد", "دائرة"] },
-            { id: "3/3", number: "المادة 3/3", title: "الاستيثاق للحق", text: "يقبل الطلب بالاستيثاق لحق يخشى زوال دليله عند النزاع ولو من غير حضور الخصم الآخر، ومن ذلك: طلب المعاينة لإثبات الحالة أو إثبات شهادة يخشى فواتها، ويكون ذلك وفقاً لأحكام القضاء المستعجل.", category: "أحكام عامة", keywords: ["استيثاق", "حق", "دليل", "معاينة", "شهادة", "مستعجل", "إثبات"] },
-            { id: "5/3", number: "المادة 5/3", title: "التعويض عن الضرر", text: "للمتضرر من الدعوى المطالبة بالتعويض عما لحقه من ضرر بطلب يقدمه للدائرة أثناء نظر الدعوى، أو بدعوى مستقلة.", category: "أحكام عامة", keywords: ["تعويض", "ضرر", "دعوى", "مستقلة", "متضرر", "مطالبة"] },
+    <div class="print-footer">صدر عبر مساعد الردود للمستفيدين</div>
 
-            { id: "1/11", number: "المادة 1/11", title: "التبليغ بالعنوان الوطني", text: "يعد تبليغ صاحب الدعوى للمدعى عليه بوساطة العنوان الوطني الخاص به تبليغاً لشخصه، ويتحقق التبليغ بتقديم صاحب الدعوى إفادة من أحد مقدمي خدمة البريد تتضمن إرسال ورقة التبليغ لعنوان المدعى عليه وصحة نسبة العنوان الوطني له.", category: "التبليغ", keywords: ["تبليغ", "عنوان وطني", "بريد", "مدعى عليه", "إبلاغ", "تبلغ", "يبلغ"] },
-            { id: "1/12", number: "المادة 1/12", title: "صحة التبليغ في الأوقات الممنوعة", text: "إذا جرى التبليغ في الأوقات الممنوعة، وحضر المدعى عليه في الموعد المحدد فالتبليغ صحيح؛ لتحقق الغاية وفق المادة الخامسة من هذا النظام.", category: "التبليغ", keywords: ["تبليغ", "أوقات", "حضور", "موعد", "ممنوعة"] },
-            { id: "2/12", number: "المادة 2/12", title: "العطل الرسمية", text: "العطل الرسمية هي يوما: الجمعة والسبت من كل أسبوع، وعطلتا العيدين، وما تقرره الجهة المختصة عطلة لعموم الموظفين.", category: "التبليغ", keywords: ["عطل", "رسمية", "جمعة", "سبت", "عيد", "إجازة"] },
-            { id: "4/17", number: "المادة 4/17", title: "الإعلان في الصحف", text: "للدائرة -عند الاقتضاء بعد استيفاء ما جاء في الفقرة (ط) من هذه المادة- أن تعلن عن طلب الموجه إليه التبليغ في إحدى الصحف المحلية أو أي وسيلة أخرى ترى أن الإعلان فيها محقق للمقصود.", category: "التبليغ", keywords: ["إعلان", "صحف", "تبليغ", "محلية", "نشر"] },
-
-            { id: "1/21", number: "المادة 1/21", title: "إضافة مدة للمقيم خارج المملكة", text: "يضاف في المواعيد التي يجب أن تنقضي قبل الإجراء، ستون يوماً على الأقل إلى المدد المنصوص عليها نظاماً، وذلك كمواعيد الحضور، ويضاف في المواعيد التي يجب أن يتم الإجراء خلالها ستون يوماً إلى المدد المنصوص عليها نظاماً، وذلك كمدد الاعتراض.", category: "المواعيد", keywords: ["مواعيد", "مدة", "خارج المملكة", "اعتراض", "حضور", "مقيم", "ستون"] },
-            { id: "1/22", number: "المادة 1/22", title: "أنواع المواعيد", text: "المواعيد نوعان: أ- ما يجب أن ينقضي فيه الموعد قبل الإجراء، مثل مواعيد الحضور. ب- ما يجب أن يتم الإجراء خلال الموعد، مثل مواعيد الاعتراض على الأحكام.", category: "المواعيد", keywords: ["مواعيد", "حضور", "اعتراض", "إجراء", "أنواع"] },
-            { id: "2/22", number: "المادة 2/22", title: "العطلة في وسط الموعد", text: "إذا وافق الموعد عطلة رسمية في أوله أو وسطه فإنها تحسب من الموعد.", category: "المواعيد", keywords: ["موعد", "عطلة", "حساب", "رسمية"] },
-
-            { id: "1/55", number: "المادة 1/55", title: "شطب الدعوى لغياب المدعي", text: "تشطب الدعوى عند تحقق غياب المدعي بناء على المادة التاسعة والخمسين من هذا النظام.", category: "الحضور والغياب", keywords: ["شطب", "غياب", "مدعي", "دعوى"] },
-            { id: "3/55", number: "المادة 3/55", title: "أثر الشطب على الإجراءات", text: "لا يؤثر شطب الدعوى على إجراءاتها السابقة بل يبنى على ما سبق ضبطه متى أعيد السير فيها.", category: "الحضور والغياب", keywords: ["شطب", "إجراءات", "سير", "دعوى", "ضبط"] },
-            { id: "4/55", number: "المادة 4/55", title: "طلب استمرار النظر بعد الشطب", text: "للمدعي طلب استمرار النظر في الدعوى بعد شطبها للمرة الأولى بمذكرة يقدمها لإدارة المحكمة، أو بتقرير منه في ضبط القضية.", category: "الحضور والغياب", keywords: ["شطب", "استمرار", "نظر", "مذكرة", "طلب", "إعادة"] },
-            { id: "1/57", number: "المادة 1/57", title: "التبليغ لشخص المدعى عليه", text: "تبليغ المدعى عليه لشخصه يتحقق إذا بلغ بنفسه، وفي حكمه تبليغ وكيله في الدعوى نفسها، وما عدا ذلك فهو تبليغ لغير شخصه.", category: "الحضور والغياب", keywords: ["تبليغ", "شخص", "مدعى عليه", "وكيل"] },
-            { id: "3/57", number: "المادة 3/57", title: "عدم إعادة التبليغ", text: "إذا تبلغ المدعى عليه لشخصه أو وكيله في الدعوى وغاب عن الجلسة الأولى، أو تبلغ لغير شخصه وغاب عن الجلسة الثانية، أو حضر في أي جلسة ثم غاب، واقتضى الحال تأجيل نظر الدعوى لجلسة تالية فلا يلزم إعادة إجراءات التبليغ.", category: "الحضور والغياب", keywords: ["تبليغ", "غياب", "جلسة", "حضور", "تأجيل"] },
-
-            { id: "1/62", number: "المادة 1/62", title: "مدة الجلسة", text: "تكون مدة الجلسة ثلاثين دقيقة ويجوز الزيادة عليها بحسب نظر الدائرة.", category: "الجلسات", keywords: ["جلسة", "مدة", "دقيقة", "وقت", "ثلاثين"] },
-            { id: "1/68", number: "المادة 1/68", title: "طلب الإمهال", text: "يدون في ضبط القضية طلب الإمهال والأعذار المقدمة من أحد الطرفين، وقدر المهلة المعطاة للمستمهل.", category: "الجلسات", keywords: ["إمهال", "مهلة", "عذر", "طلب", "تأجيل"] },
-            { id: "4/68", number: "المادة 4/68", title: "الحد الأقصى للجلسات التجارية", text: "يكون الحد الأقصى للجلسات في الدعاوى التجارية ثلاث جلسات مرافعة بعد تبليغ المدعي عليه، ولا يجوز التأجيل فيما زاد عليها إلا في حالات الضرورة كمرض أحد أطراف الدعوى.", category: "الجلسات", keywords: ["جلسات", "تجارية", "تأجيل", "مرافعة", "حد أقصى"] },
-
-            { id: "2/39", number: "المادة 2/39", title: "دعاوى الحضانة والنفقة", text: "إذا ظهر للدائرة ابتداء أن الدعاوى الواردة في الفقرة (2) من هذه المادة متوجهة فتبلغ المدعى عليه بالحضور دون استخلاف.", category: "الأحوال الشخصية", keywords: ["حضانة", "نفقة", "زيارة", "أحوال شخصية", "استخلاف"] },
-            { id: "6/33", number: "المادة 6/33", title: "نظر دعاوى الطلاق", text: "مع مراعاة الاختصاص المكاني، يتم النظر في دعاوى الطلاق والخلع وفسخ النكاح والرجعة والحضانة والنفقة والزيارة لدى دائرة واحدة، وتحسب كل دعوى إحالة مستقلة.", category: "الأحوال الشخصية", keywords: ["طلاق", "خلع", "فسخ", "حضانة", "نفقة", "زيارة", "رجعة", "نكاح"] },
-            { id: "16/33", number: "المادة 16/33", title: "إجراءات المصالحة للزوجين", text: "إذا تقدم أي من الزوجين بطلب إثبات الطلاق أو الخلع، أو دعوى فسخ النكاح -وكان بينهما ولد-؛ فتتخذ المحكمة الإجراءات التالية: إحالة الطلب أو الدعوى لمركز المصالحة، ويعرض الصلح بحضور الزوجين في مدة لا تزيد عن عشرين يوماً.", category: "الأحوال الشخصية", keywords: ["مصالحة", "طلاق", "خلع", "فسخ", "زوجين", "ولد", "صلح"] },
-
-            { id: "3/165", number: "المادة 3/165", title: "سقوط الحق في الاستئناف", text: "يسقط الحق في طلب الاستئناف في حالين: أ- مضي المدة المنصوص عليها دون تقديم مذكرة اعتراض. ب- تقديم من له حق الاعتراض مذكرة تتضمن تنازله عن طلب الاستئناف.", category: "الاعتراض", keywords: ["استئناف", "اعتراض", "سقوط", "مدة", "تنازل", "طعن"] },
-
-            { id: "2/169", number: "المادة 2/169", title: "التنفيذ المعجل", text: "يكون الحكم مشمولاً بالتنفيذ المعجل ولو لم تنص الدائرة على ذلك.", category: "التنفيذ", keywords: ["تنفيذ", "معجل", "حكم"] },
-            { id: "3/169", number: "المادة 3/169", title: "النفقة المستقبلية", text: "الحكم بالنفقة المشمول بالتنفيذ المعجل في هذه المادة هو الحكم بالنفقة المستقبلية.", category: "التنفيذ", keywords: ["نفقة", "مستقبلية", "تنفيذ", "معجل"] },
-
-            { id: "1/205", number: "المادة 1/205", title: "رفع الدعوى المستعجلة", text: "إذا رفعت الدعوى المستعجلة قبل إقامة الدعوى الأصلية فتكون بصحيفة وفقاً للإجراءات المعتادة لرفع الدعوى.", category: "القضاء المستعجل", keywords: ["مستعجل", "دعوى", "صحيفة", "إجراءات", "رفع"] },
-            { id: "3/206", number: "المادة 3/206", title: "الدعاوى المستعجلة", text: "يدخل في الدعاوى المستعجلة كل ما يخشى عليه فوات الوقت، ومنها: أ- طلب رؤية صغير أو تسليمه. ب- طلب الحجر على المال. ج- إثبات شهادة يخشى فواتها.", category: "القضاء المستعجل", keywords: ["مستعجل", "رؤية", "صغير", "حجر", "شهادة", "طفل", "أبناء"] },
-            { id: "1/208", number: "المادة 1/208", title: "المنع من السفر", text: "إذا صدر أمر الدائرة بمنع الخصم من السفر -وإن لم يكن بحضوره- فتبلغ بذلك الجهة المختصة بكتاب لتنفيذه، ولا يسمح له بالسفر إلا بإذن كتابي من الدائرة بناء على طلب منه.", category: "القضاء المستعجل", keywords: ["منع", "سفر", "أمر", "إذن", "حظر"] },
-
-            { id: "1/218", number: "المادة 1/218", title: "الإنهاءات المرتبطة", text: "إذا قدمت للمحكمة في وقت واحد عدة إنهاءات مرتبطة وكانت من اختصاصها فتحال إلى دائرة واحدة، كحصر الورثة وإقامة الولي على القاصر وإثبات حالة اجتماعية.", category: "الإنهاءات", keywords: ["إنهاءات", "ورثة", "ولي", "قاصر", "إحالة"] },
-
-            { id: "2/236", number: "المادة 2/236", title: "طلب حصر الورثة", text: "لا يقبل طلب إثبات الوفاة وحصر الورثة إلا من أحد الورثة أو من يقوم مقامه شرعاً.", category: "حصر الورثة", keywords: ["ورثة", "وفاة", "حصر", "إثبات", "ميراث"] }
-        ];
-
-        // ==========================================
-        // قاموس العامية للفصحى (موسّع - أكثر من 200 مدخل)
-        // ==========================================
-        const languageImprovements = {
-            colloquialToFormal: {
-                // ========== عبارات طويلة (تُعالج أولاً لأنها أطول) ==========
-                "الله يعطيك العافيه": "جزاك الله خيراً",
-                "الله يعطيك العافية": "جزاك الله خيراً",
-                "يعطيك العافيه": "جزاك الله خيراً",
-                "يعطيك العافية": "جزاك الله خيراً",
-                "الله يجزاك خير": "جزاك الله خيراً",
-                "الله يوفقك": "وفقك الله",
-                "الله يسعدك": "أسعدك الله",
-                "هلا والله": "أهلاً وسهلاً بك",
-                "مرحبا فيك": "أهلاً وسهلاً بك",
-                "ما ادري": "لا أعلم",
-                "مادري": "لا أعلم",
-                "ما أدري": "لا أعلم",
-                "ما اعرف": "لا أعلم",
-                "مااعرف": "لا أعلم",
-                "ما أعرف": "لا أعلم",
-                "ما قدرت": "لم أتمكن",
-                "ما أقدر": "لا أستطيع",
-                "ما اقدر": "لا أستطيع",
-                "ما استطعت": "لم أتمكن",
-                "ما عندي": "ليس لدي",
-                "ماعندي": "ليس لدي",
-                "ما وصلني": "لم يصلني",
-                "ماوصلني": "لم يصلني",
-                "ما وصلت": "لم تصلني",
-                "ما جاني": "لم يصلني",
-                "ماجاني": "لم يصلني",
-                "ما شفت": "لم أرَ",
-                "ماشفت": "لم أرَ",
-                "ما فهمت": "لم أفهم",
-                "مافهمت": "لم أفهم",
-                "ما ردوا علي": "لم يُردّ عليّ",
-                "ما ردوا": "لم يردوا",
-                "ماردوا": "لم يردوا",
-                "ما رد علي": "لم يُجب",
-                "مو مشكلة": "لا إشكال",
-                "مب مشكلة": "لا إشكال",
-                "مافيه مشكله": "لا إشكال",
-                "مافي مشكله": "لا إشكال",
-                "ما فيه مشكله": "لا إشكال",
-                "لازم اسوي": "يجب أن أقوم بـ",
-                "لازم يسوي": "يجب أن يقوم بـ",
-                "لازم اروح": "يجب أن أذهب",
-                "الشكوى حقتي": "دعواي",
-                "ملف القضية": "ملف الدعوى",
-                "رفعت عليه": "أقمت عليه الدعوى",
-                "رفع علي": "أقام عليّ الدعوى",
-                "شكيت عليه": "قدمت بلاغاً ضده",
-
-                // ========== أفعال الحركة (تروح، روح، جاء...) ==========
-                "بتروح": "ستذهب",
-                "بيروح": "سيذهب",
-                "بروح": "سأذهب",
-                "تروح": "تذهب",
-                "يروح": "يذهب",
-                "اروح": "أذهب",
-                "أروح": "أذهب",
-                "نروح": "نذهب",
-                "يروحون": "يذهبون",
-                "تروحين": "تذهبين",
-                "روح": "اذهب",
-                "روحي": "اذهبي",
-                "روحوا": "اذهبوا",
-                "رحت": "ذهبت",
-                "راح": "ذهب",
-                "راحت": "ذهبت",
-                "راحوا": "ذهبوا",
-                "رايح": "ذاهب",
-                "رايحة": "ذاهبة",
-                "رايحين": "ذاهبون",
-                "ييجي": "يأتي",
-                "تجي": "تأتي",
-                "اجي": "آتي",
-                "أجي": "آتي",
-                "نجي": "نأتي",
-                "جيت": "أتيت",
-                "جا": "أتى",
-                "جاء": "أتى",
-                "جاءت": "أتت",
-                "بيجي": "سيأتي",
-                "بتجي": "ستأتي",
-                "بنجي": "سنأتي",
-                "تعال": "تفضل",
-                "تعالي": "تفضلي",
-                "تعالوا": "تفضلوا",
-                "جاب": "أحضر",
-                "جابوا": "أحضروا",
-                "يجيب": "يحضر",
-                "تجيب": "تحضر",
-                "اجيب": "أحضر",
-                "أجيب": "أحضر",
-
-                // ========== أفعال الرؤية والسمع ==========
-                "شفت": "رأيت",
-                "شفنا": "رأينا",
-                "شفتوا": "رأيتم",
-                "شفتيه": "رأيته",
-                "يشوف": "يرى",
-                "تشوف": "ترى",
-                "اشوف": "أرى",
-                "أشوف": "أرى",
-                "نشوف": "نرى",
-                "يشوفون": "يرون",
-                "شوف": "يرجى الاطلاع على",
-                "شوفي": "يرجى الاطلاع",
-                "شوفوا": "يرجى الاطلاع",
-                "سمعت": "سمعت",
-                "سمعنا": "سمعنا",
-                "يسمع": "يسمع",
-                "كلمتهم": "خاطبتهم",
-                "كلمته": "خاطبته",
-                "كلمها": "خاطبها",
-                "يكلم": "يخاطب",
-                "تكلم": "تحدث",
-                "يتكلم": "يتحدث",
-
-                // ========== أفعال الرغبة والإرادة ==========
-                "ابغى": "أرغب في",
-                "أبغى": "أرغب في",
-                "ابي": "أريد",
-                "أبي": "أريد",
-                "ابيك": "أريد منك",
-                "ابيكم": "أرجو منكم",
-                "تبغى": "تريد",
-                "تبي": "تريد",
-                "تبين": "تريدين",
-                "يبغى": "يريد",
-                "يبي": "يريد",
-                "يبغون": "يريدون",
-                "نبي": "نريد",
-                "نبغى": "نريد",
-                "ودي": "أود",
-                "ودك": "تود",
-                "وده": "يود",
-                "ودها": "تود",
-                "ودنا": "نود",
-
-                // ========== أفعال العمل/الفعل ==========
-                "سويت": "قمت بـ",
-                "سوى": "قام بـ",
-                "سوت": "قامت بـ",
-                "سووا": "قاموا بـ",
-                "يسوي": "يقوم بـ",
-                "تسوي": "تقوم بـ",
-                "اسوي": "أقوم بـ",
-                "أسوي": "أقوم بـ",
-                "نسوي": "نقوم بـ",
-                "سوّي": "قم بـ",
-                "سوي": "قم بـ",
-                "سووي": "قومي بـ",
-                "اشتغل": "عمل",
-                "شغال": "يعمل",
-                "شغاله": "تعمل",
-                "اشتغلت": "عملت",
-                "خليت": "تركت",
-                "خلى": "ترك",
-                "خلي": "اترك",
-                "خلوا": "اتركوا",
-                "تخلي": "تترك",
-                "يخلي": "يترك",
-                "أخلي": "أترك",
-                "اخلي": "أترك",
-                "حطيت": "وضعت",
-                "حط": "ضع",
-                "حطوا": "ضعوا",
-                "يحط": "يضع",
-                "تحط": "تضع",
-                "احط": "أضع",
-                "أحط": "أضع",
-                "طلع": "خرج",
-                "طلعت": "خرجت",
-                "طلعوا": "خرجوا",
-                "يطلع": "يخرج",
-                "تطلع": "تخرج",
-                "أطلع": "أخرج",
-                "اطلع": "أخرج",
-
-                // ========== أفعال الأخذ والإعطاء ==========
-                "عطاني": "أعطاني",
-                "عطاها": "أعطاها",
-                "عطاهم": "أعطاهم",
-                "عطيته": "أعطيته",
-                "عطيتها": "أعطيتها",
-                "عطيتهم": "أعطيتهم",
-                "عطيك": "أعطيك",
-                "يعطي": "يعطي",
-                "تعطي": "تعطي",
-                "اعطي": "أعطي",
-                "أعطي": "أعطي",
-                "جاني": "وردني",
-                "جاتني": "وردتني",
-                "وصلني": "وردني",
-                "وصلتني": "وردتني",
-                "وصل لي": "وردني",
-                "خذ": "تفضّل بأخذ",
-                "خذها": "تفضّل بأخذها",
-                "خذوا": "تفضّلوا بأخذ",
-                "ياخذ": "يأخذ",
-                "تاخذ": "تأخذ",
-                "اخذ": "آخذ",
-                "آخذ": "آخذ",
-
-                // ========== أفعال الحاجة ==========
-                "لازم": "يجب",
-                "ضروري": "يلزم",
-                "محتاج": "أحتاج إلى",
-                "محتاجه": "تحتاج إلى",
-                "محتاجة": "تحتاج إلى",
-                "محتاجين": "نحتاج إلى",
-                "يحتاج": "يحتاج إلى",
-                "تحتاج": "تحتاج إلى",
-
-                // ========== أفعال متنوعة ==========
-                "راجع": "يرجى مراجعة",
-                "راجعوا": "يرجى مراجعة",
-                "راجعي": "يرجى مراجعة",
-                "بتلاقي": "ستجد",
-                "بتلاقون": "ستجدون",
-                "بتلاقوا": "ستجدون",
-                "تلاقي": "تجد",
-                "تلاقوا": "تجدون",
-                "ألاقي": "أجد",
-                "الاقي": "أجد",
-                "نلاقي": "نجد",
-                "لاقيت": "وجدت",
-                "لقيت": "وجدت",
-                "لقوا": "وجدوا",
-                "لقاه": "وجده",
-                "قال لي": "أفادني",
-                "قالوا لي": "أفادوني",
-                "قلت له": "أبلغته",
-                "قلتلهم": "أبلغتهم",
-                "قلتله": "أبلغته",
-                "يقول": "يقول",
-                "تقول": "تقول",
-                "أقول": "أقول",
-                "اقول": "أقول",
-                "قل له": "أبلغه",
-                "قلوا": "أفادوا",
-                "استنى": "أنتظر",
-                "استنيت": "انتظرت",
-                "استنوا": "انتظروا",
-                "انتظر": "أنتظر",
-                "منتظر": "في انتظار",
-                "منتظره": "في انتظار",
-                "منتظرة": "في انتظار",
-                "منتظرين": "في انتظار",
-
-                // ========== أسماء الإشارة والموصول ==========
-                "هذي": "هذه",
-                "هاذي": "هذه",
-                "ذي": "هذه",
-                "هاذا": "هذا",
-                "ذا": "هذا",
-                "هذول": "هؤلاء",
-                "هذولا": "هؤلاء",
-                "هذولاك": "أولئك",
-                "ذول": "هؤلاء",
-                "اللي": "الذي",
-                "إلي": "الذي",
-                "يلي": "الذي",
-
-                // ========== النداء والضمائر ==========
-                "اخوي": "أخي الكريم",
-                "اخوى": "أخي الكريم",
-                "أخوي": "أخي الكريم",
-                "يالغالي": "حضرتك",
-                "ياغالي": "حضرتك",
-                "ياخي": "أخي الفاضل",
-                "يا اخي": "أخي الفاضل",
-                "ياستاذ": "أستاذي الفاضل",
-                "يا استاذ": "أستاذي الفاضل",
-                "يا أستاذ": "أستاذي الفاضل",
-
-                // ========== أدوات الاستفهام ==========
-                "وش": "ما",
-                "ايش": "ما",
-                "إيش": "ما",
-                "ليش": "لماذا",
-                "ليه": "لماذا",
-                "وين": "أين",
-                "فين": "أين",
-                "منين": "من أين",
-                "لوين": "إلى أين",
-
-                // ========== الظروف الزمانية والمكانية ==========
-                "الحين": "الآن",
-                "الحينه": "الآن",
-                "دحين": "الآن",
-                "هسا": "الآن",
-                "توني": "لتوي",
-                "تونا": "لتونا",
-                "بعدين": "لاحقاً",
-                "بكره": "غداً",
-                "بكرة": "غداً",
-                "بعد بكرة": "بعد غد",
-                "بدري": "مبكراً",
-                "متأخر": "متأخراً",
-                "فوق": "أعلى",
-                "تحت": "أسفل",
-                "جنب": "بجانب",
-                "قدام": "أمام",
-                "ورا": "خلف",
-                "برا": "خارج",
-                "جوا": "داخل",
-
-                // ========== أدوات الربط ==========
-                "بس": "لكن",
-                "يعني": "أي أن",
-                "علشان": "لأجل",
-                "عشان": "لأجل",
-                "عشانك": "لأجلك",
-                "مادام": "طالما",
-                "ولا": "أو",
-
-                // ========== الكميات والأحجام ==========
-                "كثير": "كثيراً",
-                "واجد": "كثيراً",
-                "شوي": "قليلاً",
-                "شوية": "قليلاً",
-                "مره": "جداً",
-                "حيل": "جداً",
-                "كافي": "كافٍ",
-
-                // ========== التأكيد والنفي ==========
-                "مو": "ليس",
-                "مب": "ليس",
-                "مش": "ليس",
-                "ماهو": "ليس",
-                "ماهي": "ليست",
-                "ماهم": "ليسوا",
-                "ايوه": "نعم",
-                "ايوا": "نعم",
-                "اكيد": "بلا شك",
-                "أكيد": "بلا شك",
-                "طبعا": "بالطبع",
-                "طبعاً": "بالطبع",
-
-                // ========== التعابير اليومية ==========
-                "طيب": "حسناً",
-                "اوكي": "حسناً",
-                "أوكي": "حسناً",
-                "تمام": "مفهوم",
-                "زين": "حسناً",
-                "خلاص": "تم",
-                "معليش": "لا بأس",
-                "معلش": "لا بأس",
-                "عادي": "لا إشكال",
-                "مشكور": "شكراً جزيلاً",
-                "مشكوره": "شكراً جزيلاً",
-                "مشكورة": "شكراً جزيلاً",
-                "مشكورين": "شكراً لكم",
-                "شكرا": "شكراً",
-                "شكرًا": "شكراً",
-                "يسلمو": "شكراً لك",
-                "يسلموا": "شكراً لكم",
-                "مرحبا": "السلام عليكم",
-                "هلا": "أهلاً",
-                "اهلا": "أهلاً",
-                "أهلا": "أهلاً",
-
-                // ========== كلمات قضائية عامية ==========
-                "قضيتي": "دعواي",
-                "قضيته": "دعواه",
-                "قضيتها": "دعواها",
-                "قضيتنا": "دعوانا",
-                "قعدة": "جلسة",
-                "قعدات": "جلسات",
-                "جلستي": "جلستي",
-                "حكموا": "صدر الحكم",
-                "كسبت": "صدر الحكم لصالحي",
-                "خسرت": "صدر الحكم ضدي",
-                "الغيت": "ألغيت",
-                "ملغي": "ملغى",
-                "اتصلت بهم": "تواصلت معهم",
-                "كلمت المحكمه": "تواصلت مع المحكمة",
-                "كلمت المحكمة": "تواصلت مع المحكمة"
-            },
-
-            legalTerms: {
-                "القضية": "الدعوى",
-                "الشكوى": "الدعوى",
-                "المشكلة": "موضوع الطلب",
-                "المشكله": "موضوع الطلب",
-                "الموعد": "الجلسة المحددة",
-                "القاضي": "الدائرة القضائية",
-                "المحكمة": "الجهة العدلية المختصة",
-                "المحكمه": "الجهة العدلية المختصة",
-                "الاستئناف": "طلب الاستئناف",
-                "الطعن": "الاعتراض",
-                "المدعي": "صاحب الدعوى",
-                "الوكيل": "الوكيل الشرعي",
-                "التوكيل": "الوكالة الشرعية",
-                "الابلاغ": "التبليغ",
-                "الاغلاق": "إغلاق الطلب"
-            },
-
-            openings: [
-                "السلام عليكم ورحمة الله وبركاته،\n\nنشكر لكم تواصلكم مع بوابة خدمات المستفيدين.",
-                "السلام عليكم ورحمة الله وبركاته،\n\nإشارة إلى طلبكم المقدم عبر بوابة خدمات المستفيدين.",
-                "السلام عليكم ورحمة الله وبركاته،\n\nبالإشارة إلى استفساركم الكريم.",
-                "السلام عليكم ورحمة الله وبركاته،\n\nنفيدكم بخصوص طلبكم المشار إليه."
-            ],
-
-            closings: [
-                "\n\nمع خالص التحية والتقدير.",
-                "\n\nنسأل الله لكم التوفيق والسداد.",
-                "\n\nوتقبلوا خالص التحية والاحترام.",
-                "\n\nونسعد بخدمتكم دائماً."
-            ]
-        };
-
-        // ==========================================
-        // القوالب الجاهزة
-        // ==========================================
-        const responseTemplates = [
-            { id: 1, name: "موعد جلسة", icon: "📅", text: "السلام عليكم ورحمة الله وبركاته،\n\nإشارة إلى طلبكم المقدم، نفيدكم بأنه قد تم تحديد موعد جلسة للنظر في الدعوى بتاريخ [التاريخ] الساعة [الوقت].\n\nيرجى الحضور في الموعد المحدد مع إحضار جميع المستندات المؤيدة لطلبكم.\n\nمع التقدير." },
-            { id: 2, name: "تأجيل جلسة", icon: "🔄", text: "السلام عليكم ورحمة الله وبركاته،\n\nنفيدكم بأنه تم تأجيل موعد الجلسة المحددة سابقاً إلى تاريخ [التاريخ الجديد] الساعة [الوقت].\n\nوذلك وفقاً لما نصت عليه المادة (68) من اللوائح التنفيذية لنظام المرافعات الشرعية.\n\nمع التقدير." },
-            { id: 3, name: "استكمال مستندات", icon: "📎", text: "السلام عليكم ورحمة الله وبركاته،\n\nإشارة إلى طلبكم المقدم، نفيدكم بضرورة استكمال المستندات التالية:\n\n1- [المستند الأول]\n2- [المستند الثاني]\n\nوذلك لاستكمال إجراءات النظر في طلبكم.\n\nمع التقدير." },
-            { id: 4, name: "إغلاق طلب", icon: "✅", text: "السلام عليكم ورحمة الله وبركاته،\n\nنفيدكم بأنه تم إغلاق طلبكم رقم [رقم الطلب] وذلك بعد اتخاذ الإجراء اللازم بشأنه.\n\nفي حال وجود أي استفسار آخر، يسعدنا تقديم المساعدة.\n\nمع التقدير." },
-            { id: 5, name: "رد على اعتراض", icon: "⚠️", text: "السلام عليكم ورحمة الله وبركاته،\n\nإشارة إلى اعتراضكم المقدم على [موضوع الاعتراض]، نفيدكم بأنه:\n\n[تفاصيل الرد]\n\nوفقاً لما نصت عليه المادة [رقم المادة] من اللوائح التنفيذية لنظام المرافعات الشرعية.\n\nمع التقدير." },
-            { id: 6, name: "توضيح إجراء", icon: "💡", text: "السلام عليكم ورحمة الله وبركاته،\n\nإشارة إلى استفساركم حول [الموضوع]، نوضح لكم ما يلي:\n\n[التوضيح]\n\nآملين أن يكون التوضيح كافياً، وفي حال وجود أي استفسار آخر نسعد بخدمتكم.\n\nمع التقدير." },
-            { id: 7, name: "إحالة لجهة أخرى", icon: "↗️", text: "السلام عليكم ورحمة الله وبركاته،\n\nإشارة إلى طلبكم المقدم، نفيدكم بأن موضوع طلبكم من اختصاص [الجهة المختصة].\n\nيرجى التوجه إليها لاستكمال الإجراء اللازم.\n\nمع التقدير." },
-            { id: 8, name: "تبليغ حكم", icon: "⚖️", text: "السلام عليكم ورحمة الله وبركاته،\n\nنفيدكم بصدور الحكم في الدعوى رقم [رقم الدعوى] بتاريخ [التاريخ].\n\nويمكنكم الاطلاع على صورة الحكم من خلال البوابة الإلكترونية، علماً بأن مدة الاعتراض [المدة] يوماً من تاريخ استلام صورة الحكم.\n\nمع التقدير." }
-        ];
-
-        // ==========================================
-        // قاموس المرادفات للتحليل الدلالي المتقدم
-        // ==========================================
-        const synonymsMap = {
-            "تبليغ": ["تبليغ", "إبلاغ", "ابلاغ", "بلغ", "يبلغ", "تبلغ", "إشعار", "اشعار", "تبلغني", "يتبلغ", "بلغوني", "ابلغوني"],
-            "جلسة": ["جلسة", "جلسات", "جلستي", "موعد الجلسة", "قعدة", "قعدات", "مرافعة", "مرافعات"],
-            "موعد": ["موعد", "مواعيد", "وقت", "تاريخ", "يوم", "جدولة", "تحديد موعد", "متى"],
-            "حكم": ["حكم", "أحكام", "قرار", "نطق", "صك", "صدر", "صدور", "نطق القاضي", "الحكم النهائي"],
-            "استئناف": ["استئناف", "استانف", "استانفت", "استئنفت", "طعن", "طعنت", "اعتراض على الحكم"],
-            "اعتراض": ["اعتراض", "اعترضت", "معترض", "رفض", "رفضت", "لم أوافق", "ما وافقت", "طعن", "تظلم"],
-            "شطب": ["شطب", "شطبت", "شطبوا", "إلغاء الدعوى", "شطب الدعوى"],
-            "غياب": ["غياب", "غاب", "تغيب", "ما حضر", "لم يحضر", "مافي حضور", "غائب"],
-            "حضور": ["حضور", "حضرت", "حضر", "حضروا", "حاضر", "جيت", "أتيت"],
-            "دعوى": ["دعوى", "دعاوى", "قضية", "قضايا", "شكوى", "شكاوى", "مطالبة", "رفع دعوى", "ملف", "ملفي", "قضيتي"],
-            "مذكرة": ["مذكرة", "مذكرات", "ورقة", "إفادة", "لائحة", "صحيفة"],
-            "طلب": ["طلب", "طلبات", "مطلب", "طلبت", "أطلب", "أرجو", "أرجوكم", "أرغب", "التماس"],
-            "إغلاق": ["إغلاق", "اغلاق", "أغلق", "اغلق", "أغلقت", "اغلقت", "أغلقوا", "اغلقوا", "مغلق", "مقفل", "قفل"],
-            "نفقة": ["نفقة", "نفقات", "مصروف", "إعالة", "اعالة"],
-            "حضانة": ["حضانة", "حضانه", "رعاية الأطفال", "رعاية الأولاد", "طفلي", "أولادي", "أبنائي", "بناتي"],
-            "زيارة": ["زيارة", "زيارات", "رؤية", "رؤية الأطفال", "لقاء"],
-            "طلاق": ["طلاق", "طلقها", "طلقت", "طلقني", "مطلقة", "مطلق", "فراق"],
-            "خلع": ["خلع", "خلعت", "أخلع", "اخلع", "خلعي"],
-            "ورثة": ["ورثة", "وراثة", "ميراث", "توريث", "تركة", "ارث", "إرث", "وريث"],
-            "وفاة": ["وفاة", "وفاه", "توفى", "توفي", "متوفى", "المتوفى", "المتوفي"],
-            "تنفيذ": ["تنفيذ", "ينفذ", "نفذ", "نفذت", "منفذ", "تنفيذي"],
-            "سفر": ["سفر", "سافر", "مسافر", "منع سفر", "حظر سفر", "مغادرة", "خروج"],
-            "منع": ["منع", "ممنوع", "منعت", "منعوا", "حظر", "حظرت"],
-            "مستعجل": ["مستعجل", "مستعجلة", "استعجال", "عاجل", "عاجلة", "طارئ", "طارئة", "ضروري"],
-            "تعويض": ["تعويض", "تعويضات", "عوض", "عوضوا", "خسائر"],
-            "ضرر": ["ضرر", "أضرار", "اضرار", "تضررت", "متضرر", "تضرر"],
-            "وكيل": ["وكيل", "وكلاء", "وكالة", "موكل", "توكيل"],
-            "عنوان وطني": ["عنوان وطني", "العنوان الوطني", "عنواني", "عنوان", "العنوان"],
-            "بريد": ["بريد", "البريد", "ارسال", "إرسال", "مراسلات"],
-            "إعلان": ["إعلان", "اعلان", "نشر", "أعلن", "اعلن"],
-            "صحف": ["صحف", "صحيفة", "جريدة", "جرائد", "صحيفة محلية"],
-            "مدة": ["مدة", "مدد", "فترة", "مدى", "انتظار", "مدة زمنية"],
-            "مرافعة": ["مرافعة", "مرافعات", "ترافع", "جلسة مرافعة"],
-            "إمهال": ["إمهال", "امهال", "مهلة", "أمهل", "امهلني", "إعطاء مهلة"],
-            "تأجيل": ["تأجيل", "تاجيل", "أجل", "تأجلت", "تأجلة", "ترحيل الموعد", "تأخير"],
-            "فسخ": ["فسخ", "فسخت", "فسخوا", "إلغاء العقد", "إبطال"],
-            "مصالحة": ["مصالحة", "صلح", "تصالح", "توفيق", "مركز المصالحة", "تسوية"],
-            "شكوى": ["شكوى", "شكيت", "اشتكى", "اشتكيت", "بلاغ", "بلغت"],
-            "مدعى عليه": ["مدعى عليه", "المدعى عليه", "خصمي", "الخصم", "الطرف الآخر"],
-            "تأخير": ["تأخير", "تأخر", "متأخر", "تأخرت", "تأخير الرد", "إبطاء"],
-            "متابعة": ["متابعة", "تابعت", "أتابع", "تابع", "استفسار", "اطلاع على الحالة"]
-        };
-
-        // ==========================================
-        // مصفوفة النوايا (Intent Detection)
-        // ==========================================
-        const intentPatterns = [
-            { intent: "استفسار عن موعد جلسة", keywords: ["موعد الجلسة", "متى الجلسة", "موعد جلستي", "وين جلستي", "تاريخ الجلسة", "موعد جديد"], priority: 10 },
-            { intent: "اعتراض على إغلاق طلب", keywords: ["اعتراض على الإغلاق", "رفض الإغلاق", "ما وافقت على الإغلاق", "لم أوافق على الإغلاق", "اغلقت بدون", "أغلقت دون", "اغلقت دون"], priority: 10 },
-            { intent: "شكوى من تأخر الرد", keywords: ["لم يرد", "ما ردوا", "تأخر الرد", "متأخر", "ما وصلني رد", "من زمان", "لم يصلني رد"], priority: 9 },
-            { intent: "طلب متابعة مذكرة", keywords: ["متابعة مذكرة", "مذكرة رقم", "لاحقاً للمذكرة", "إلحاقاً للمذكرة", "الحاقا", "الحاقاً"], priority: 8 },
-            { intent: "طلب تبليغ", keywords: ["لم يصلني تبليغ", "ما وصلني تبليغ", "لم أتبلغ", "ما وصلني إشعار", "ما وصلني اشعار"], priority: 9 },
-            { intent: "استفسار عن الاستئناف", keywords: ["استئناف", "مدة الاستئناف", "كيف أستأنف", "طعن على الحكم"], priority: 9 },
-            { intent: "طلب في قضية أحوال شخصية", keywords: ["حضانة", "نفقة", "طلاق", "خلع", "زيارة أطفال", "رؤية الأطفال"], priority: 9 },
-            { intent: "طلب حصر ورثة", keywords: ["حصر ورثة", "ميراث", "تركة", "وفاة", "متوفى"], priority: 8 },
-            { intent: "شكوى من موظف/خدمة", keywords: ["سوء معاملة", "الموظف", "لم يساعدني", "تجاهلوني"], priority: 7 }
-        ];
-
-        // ==========================================
-        // مؤشرات النبرة
-        // ==========================================
-        const toneIndicators = {
-            complaint: ["شكوى", "اعتراض", "رفض", "ظلم", "سوء", "غير راضٍ", "متضرر", "تضررت", "مشكلة", "مشكله", "مستاء", "غاضب"],
-            inquiry: ["استفسار", "سؤال", "أستفسر", "أسأل", "هل", "كيف", "ما هو", "متى", "أين", "لماذا", "أرجو التوضيح", "أرجو الإفادة"],
-            request: ["أطلب", "أرجو", "ألتمس", "أرغب", "أريد", "يرجى", "من فضلكم", "من فضلك", "لو سمحتم"],
-            urgent: ["عاجل", "ضروري", "سريع", "مستعجل", "في أقرب وقت", "بأسرع وقت"]
-        };
-
-        // ==========================================
-        // المتغيرات العامة
-        // ==========================================
-        let selectedArticles = [];
-        let savedResponses = JSON.parse(localStorage.getItem('savedResponses') || '[]');
-        let currentFilter = 'all';
-
-        // ==========================================
-        // تهيئة التطبيق
-        // ==========================================
-        function init() {
-            document.getElementById('articlesCount').textContent = legalArticles.length;
-            renderTemplates();
-            renderSavedResponses();
-            renderCategoryFilter();
-            updateStats();
-        }
-
-        // ==========================================
-        // تطبيع النص العربي
-        // ==========================================
-        function normalizeArabic(text) {
-            return String(text)
-                .replace(/[إأآ]/g, 'ا')
-                .replace(/ى/g, 'ي')
-                .replace(/ة/g, 'ه')
-                .replace(/ؤ/g, 'و')
-                .replace(/ئ/g, 'ي')
-                .replace(/[\u064B-\u0652]/g, '')
-                .replace(/ـ/g, '')
-                .toLowerCase();
-        }
-
-        // ==========================================
-        // تحليل الرسالة
-        // ==========================================
-        function analyzeMessage() {
-            const message = document.getElementById('beneficiaryMessage').value.trim();
-            if (!message) {
-                showToast('يرجى إدخال رسالة المستفيد أولاً');
-                return;
-            }
-
-            const normalizedMsg = normalizeArabic(message);
-
-            const foundKeywords = extractKeywords(normalizedMsg);
-            const detectedIntents = detectIntent(normalizedMsg);
-            const tone = detectTone(normalizedMsg);
-            const entities = extractEntities(message);
-            const relevantArticles = findRelevantArticles(foundKeywords, normalizedMsg, detectedIntents);
-
-            renderAnalysis({ foundKeywords, detectedIntents, tone, entities });
-            renderArticles(relevantArticles);
-            suggestResponse(message, relevantArticles, detectedIntents, tone, entities);
-
-            showToast(`تم العثور على ${relevantArticles.length} مادة ذات صلة`);
-        }
-
-        function extractKeywords(normalizedText) {
-            const found = new Set();
-            for (const [mainKeyword, synonyms] of Object.entries(synonymsMap)) {
-                for (const syn of synonyms) {
-                    if (normalizedText.includes(normalizeArabic(syn))) {
-                        found.add(mainKeyword);
-                        break;
-                    }
-                }
-            }
-            return Array.from(found);
-        }
-
-        function detectIntent(normalizedText) {
-            const detected = [];
-            intentPatterns.forEach(pattern => {
-                let matchCount = 0;
-                pattern.keywords.forEach(kw => {
-                    if (normalizedText.includes(normalizeArabic(kw))) matchCount++;
-                });
-                if (matchCount > 0) {
-                    detected.push({
-                        intent: pattern.intent,
-                        score: matchCount * pattern.priority,
-                        matches: matchCount
-                    });
-                }
-            });
-            return detected.sort((a, b) => b.score - a.score).slice(0, 3);
-        }
-
-        function detectTone(normalizedText) {
-            let scores = { complaint: 0, inquiry: 0, request: 0, urgent: 0 };
-            for (const [tone, words] of Object.entries(toneIndicators)) {
-                words.forEach(w => {
-                    if (normalizedText.includes(normalizeArabic(w))) scores[tone]++;
-                });
-            }
-            const isUrgent = scores.urgent > 0;
-            delete scores.urgent;
-            const dominant = Object.entries(scores).reduce((a, b) => (b[1] > a[1] ? b : a));
-            return {
-                primary: dominant[1] > 0 ? dominant[0] : 'neutral',
-                urgent: isUrgent,
-                scores
-            };
-        }
-
-        function extractEntities(originalText) {
-            const entities = [];
-            const requestNumbers = originalText.match(/\b\d{7,}\b/g);
-            if (requestNumbers) requestNumbers.forEach(n => entities.push({ type: 'رقم طلب/مذكرة', value: n }));
-
-            const dates = originalText.match(/\b\d{1,4}[\/\-]\d{1,2}[\/\-]\d{1,4}\b/g);
-            if (dates) dates.forEach(d => entities.push({ type: 'تاريخ', value: d }));
-
-            const phones = originalText.match(/\b05\d{8}\b/g);
-            if (phones) phones.forEach(p => entities.push({ type: 'رقم جوال', value: p }));
-
-            const ids = originalText.match(/\b[12]\d{9}\b/g);
-            if (ids) ids.forEach(id => {
-                // تجنب تكرار إذا كان نفس الرقم مسجلاً كجوال
-                if (!entities.find(e => e.value === id)) entities.push({ type: 'رقم هوية', value: id });
-            });
-            return entities;
-        }
-
-        function renderAnalysis(analysis) {
-            const box = document.getElementById('analysisBox');
-            const content = document.getElementById('analysisContent');
-            let html = '';
-
-            const toneLabels = {
-                complaint: { label: 'شكوى / اعتراض', class: 'tone-complaint' },
-                inquiry: { label: 'استفسار', class: 'tone-inquiry' },
-                request: { label: 'طلب', class: 'tone-request' },
-                neutral: { label: 'محايدة', class: 'tone-neutral' }
-            };
-            const toneInfo = toneLabels[analysis.tone.primary] || toneLabels.neutral;
-
-            html += `<div class="analysis-item"><strong>نبرة الرسالة:</strong> <span class="tag ${toneInfo.class}">${toneInfo.label}</span>`;
-            if (analysis.tone.urgent) html += ` <span class="tag" style="background:#e67e22;">⚡ عاجل</span>`;
-            html += `</div>`;
-
-            if (analysis.detectedIntents.length > 0) {
-                html += `<div class="analysis-item"><strong>الموضوع الرئيسي:</strong><div class="tag-list">`;
-                analysis.detectedIntents.forEach(i => {
-                    html += `<span class="tag intent">${i.intent}</span>`;
-                });
-                html += `</div></div>`;
-            }
-
-            if (analysis.entities.length > 0) {
-                html += `<div class="analysis-item"><strong>المعلومات المستخرجة:</strong><div class="tag-list">`;
-                analysis.entities.forEach(e => {
-                    html += `<span class="tag entity">${e.type}: ${e.value}</span>`;
-                });
-                html += `</div></div>`;
-            }
-
-            if (analysis.foundKeywords.length > 0) {
-                html += `<div class="analysis-item"><strong>كلمات مفتاحية (${analysis.foundKeywords.length}):</strong><div class="tag-list">`;
-                analysis.foundKeywords.forEach(k => {
-                    html += `<span class="tag">${k}</span>`;
-                });
-                html += `</div></div>`;
-            }
-
-            content.innerHTML = html;
-            box.classList.add('show');
-        }
-
-        function findRelevantArticles(keywords, normalizedText, intents) {
-            const scored = legalArticles.map(article => {
-                let score = 0;
-
-                keywords.forEach(keyword => {
-                    const normalizedKw = normalizeArabic(keyword);
-
-                    article.keywords.forEach(k => {
-                        const normalizedK = normalizeArabic(k);
-                        if (normalizedK === normalizedKw) score += 15;
-                        else if (normalizedK.includes(normalizedKw) || normalizedKw.includes(normalizedK)) score += 10;
-                    });
-
-                    if (normalizeArabic(article.title).includes(normalizedKw)) score += 8;
-                    if (normalizeArabic(article.text).includes(normalizedKw)) score += 3;
-                });
-
-                if (intents.length > 0) {
-                    const topIntent = intents[0].intent;
-                    if (topIntent.includes("موعد") && article.category === "الجلسات") score += 20;
-                    if (topIntent.includes("موعد") && article.category === "المواعيد") score += 15;
-                    if (topIntent.includes("إغلاق") && article.category === "الاعتراض") score += 15;
-                    if (topIntent.includes("استئناف") && article.category === "الاعتراض") score += 20;
-                    if (topIntent.includes("تبليغ") && article.category === "التبليغ") score += 20;
-                    if (topIntent.includes("أحوال شخصية") && article.category === "الأحوال الشخصية") score += 20;
-                    if (topIntent.includes("ورثة") && article.category === "حصر الورثة") score += 20;
-                }
-
-                return { ...article, score };
-            });
-
-            return scored
-                .filter(a => a.score > 0)
-                .sort((a, b) => b.score - a.score)
-                .slice(0, 10);
-        }
-
-        function renderArticles(articles) {
-            const container = document.getElementById('articlesContainer');
-
-            if (articles.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">🔍</div>
-                        <p>لم يتم العثور على مواد ذات صلة</p>
-                    </div>
-
-                `;
-                return;
-            }
-
-            container.innerHTML = articles.map(article => {
-                const scoreTag = article.score !== undefined && article.score > 0
-                    ? `<span class="article-score">تطابق ${article.score}</span>`
-                    : '';
-                const isSelected = selectedArticles.includes(article.id) ? 'selected' : '';
-                return `
-                <div class="article-item ${isSelected}" onclick="toggleArticleSelection('${article.id}')" data-id="${article.id}">
-                    <div>
-                        <span class="article-number">${article.number}</span>
-                        ${scoreTag}
-                    </div>
-                    <div class="article-title">${article.title}</div>
-                    <div class="article-text">${article.text.substring(0, 150)}${article.text.length > 150 ? '...' : ''}</div>
-                    <span class="article-category">${article.category}</span>
-                </div>`;
-            }).join('');
-        }
-
-        function toggleArticleSelection(id) {
-            const element = document.querySelector('.article-item[data-id="' + id + '"]');
-            const index = selectedArticles.indexOf(id);
-            if (index > -1) {
-                selectedArticles.splice(index, 1);
-                if (element) element.classList.remove('selected');
-            } else {
-                selectedArticles.push(id);
-                if (element) element.classList.add('selected');
-            }
-        }
-
-        function suggestResponse(message, articles, intents, tone, entities) {
-            let response = languageImprovements.openings[0] + '\n\n';
-            if (intents.length > 0) {
-                const topIntent = intents[0].intent;
-                if (topIntent.includes("موعد")) {
-                    response += 'بخصوص استفساركم عن موعد الجلسة، نفيدكم بأنه يمكنكم الاطلاع على تفاصيل الموعد المحدد من خلال البوابة الإلكترونية، أو بالتواصل مع إدارة المحكمة المختصة.';
-                } else if (topIntent.includes("إغلاق")) {
-                    response += 'بخصوص اعتراضكم على إغلاق الطلب، نفيدكم بأنه قد تم الاطلاع على ما ورد، وسيجري مراجعة الإجراء المتخذ وفقاً للأنظمة المعمول بها، وسيتم الرد عليكم بنتيجة المراجعة.';
-                } else if (topIntent.includes("تأخر الرد")) {
-                    response += 'نعتذر عن أي تأخير قد يكون حصل، ونفيدكم بأنه جارٍ متابعة طلبكم، وسيتم الرد عليكم بما يستجد في أقرب وقت بإذن الله.';
-                } else if (topIntent.includes("تبليغ")) {
-                    response += 'بخصوص التبليغ، نفيدكم بأن إجراءات التبليغ تتم وفقاً لما نصت عليه اللوائح التنفيذية لنظام المرافعات الشرعية، ويمكنكم مراجعة حالة التبليغ عبر البوابة الإلكترونية.';
-                } else if (topIntent.includes("استئناف")) {
-                    response += 'بخصوص استفساركم عن الاستئناف، نفيدكم بأن مدة الاستئناف تبدأ من تاريخ استلامكم صورة الحكم، وتقدم مذكرة الاعتراض عبر القنوات النظامية.';
-                } else if (topIntent.includes("أحوال شخصية")) {
-                    response += 'بخصوص طلبكم المتعلق بالأحوال الشخصية، نفيدكم بأنه يتم النظر في هذا النوع من الدعاوى وفقاً لأحكام نظام المرافعات الشرعية ولوائحه التنفيذية.';
-                } else if (topIntent.includes("متابعة مذكرة")) {
-                    response += 'بخصوص متابعة مذكرتكم المشار إليها، نفيدكم بأنه جارٍ العمل على مراجعة ما ورد، وسيتم إشعاركم بالمستجدات عبر القنوات المعتمدة.';
-                } else {
-                    response += 'بخصوص طلبكم المشار إليه، نفيدكم بأنه جارٍ العمل على معالجته وفقاً للإجراءات النظامية المتبعة.';
-                }
-            } else {
-                response += 'بخصوص طلبكم المشار إليه، نفيدكم بأنه جارٍ العمل على معالجته وفقاً للإجراءات النظامية المتبعة.';
-            }
-            const requestRefs = entities.filter(e => e.type === 'رقم طلب/مذكرة');
-            if (requestRefs.length > 0) {
-                response += '\n\n(المرجع: ' + requestRefs.map(r => r.value).join('، ') + ')';
-            }
-            if (articles.length > 0) {
-                response += '\n\n📚 السند النظامي:\n';
-                articles.slice(0, 3).forEach(article => { response += '\n• ' + article.number + ': ' + article.title; });
-            }
-            response += languageImprovements.closings[0];
-            document.getElementById('finalOutput').value = response;
-        }
-
-        function improveLanguage() {
-            const input = document.getElementById('userResponse').value.trim();
-            if (!input) { showToast('يرجى كتابة الرد أولاً'); return; }
-            let improved = input;
-            // ترتيب المفاتيح بطول تنازلي حتى لا تُستبدل الكلمات القصيرة قبل الطويلة
-            const sortedColloquial = Object.entries(languageImprovements.colloquialToFormal).sort((a, b) => b[0].length - a[0].length);
-            sortedColloquial.forEach(([colloquial, formal]) => {
-                const escaped = colloquial.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                // حدود الكلمات العربية: نسمح ببادئات (و/ف/ب/ل/ك) قبل الكلمة العامية
-                const regex = new RegExp('(^|[^\\u0621-\\u064A])([وفبلك]?)' + escaped + '(?=[^\\u0621-\\u064A]|$)', 'g');
-                improved = improved.replace(regex, '$1$2' + formal);
-            });
-            Object.entries(languageImprovements.legalTerms).forEach(([term, legal]) => {
-                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp('(^|[^\\u0621-\\u064A])' + escaped + '(?=[^\\u0621-\\u064A]|$)', 'g');
-                improved = improved.replace(regex, '$1' + legal);
-            });
-            if (!improved.includes('السلام عليكم')) {
-                improved = languageImprovements.openings[0] + '\n\n' + improved;
-            }
-            if (!improved.includes('التقدير') && !improved.includes('التحية') && !improved.includes('الاحترام')) {
-                improved += languageImprovements.closings[0];
-            }
-            document.getElementById('finalOutput').value = improved;
-            showToast('تم تحسين الصياغة بنجاح');
-        }
-
-        function addSelectedArticle() {
-            if (selectedArticles.length === 0) { showToast('يرجى اختيار مادة أولاً'); return; }
-            const output = document.getElementById('finalOutput');
-            let currentText = output.value;
-            selectedArticles.forEach(id => {
-                const article = legalArticles.find(a => a.id === id);
-                if (article) {
-                    const citation = '\n\n📌 ' + article.number + ':\n"' + article.text + '"';
-                    if (!currentText.includes(article.number)) { currentText += citation; }
-                }
-            });
-            output.value = currentText;
-            showToast('تمت إضافة المواد المختارة');
-        }
-
-        function copyOutput() {
-            const output = document.getElementById('finalOutput').value;
-            if (!output.trim()) { showToast('لا يوجد رد للنسخ'); return; }
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(output).then(() => {
-                    showToast('تم نسخ الرد بنجاح ✓');
-                }).catch(() => {
-                    fallbackCopy();
-                });
-            } else {
-                fallbackCopy();
-            }
-        }
-
-        function fallbackCopy() {
-            const textarea = document.getElementById('finalOutput');
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showToast('تم نسخ الرد بنجاح ✓');
-            } catch (e) {
-                showToast('تعذّر النسخ، يرجى النسخ يدوياً');
-            }
-        }
-
-        function saveResponse() {
-            const output = document.getElementById('finalOutput').value;
-            if (!output.trim()) { showToast('لا يوجد رد للحفظ'); return; }
-            const response = {
-                id: Date.now(),
-                text: output,
-                date: new Date().toLocaleDateString('ar-SA'),
-                preview: output.substring(0, 100)
-            };
-            savedResponses.unshift(response);
-            localStorage.setItem('savedResponses', JSON.stringify(savedResponses));
-            renderSavedResponses();
-            updateStats();
-            showToast('تم حفظ الرد بنجاح ✓');
-        }
-
-        function clearOutput() {
-            document.getElementById('finalOutput').value = '';
-            showToast('تم مسح الرد');
-        }
-
-        function renderSavedResponses() {
-            const container = document.getElementById('savedList');
-            if (savedResponses.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>لا توجد ردود محفوظة بعد</p></div>';
-                return;
-            }
-            container.innerHTML = savedResponses.map(response =>
-                '<div class="saved-item">' +
-                '<div class="saved-item-actions">' +
-                '<button onclick="loadSavedResponse(' + response.id + ')" title="تحميل">📂</button>' +
-                '<button onclick="deleteSavedResponse(' + response.id + ')" title="حذف">🗑️</button>' +
-                '</div>' +
-                '<div class="saved-item-preview">' + escapeHtml(response.preview) + '...</div>' +
-                '<div class="saved-item-date">' + response.date + '</div>' +
-                '</div>'
-            ).join('');
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function loadSavedResponse(id) {
-            const response = savedResponses.find(r => r.id === id);
-            if (response) {
-                document.getElementById('finalOutput').value = response.text;
-                showToast('تم تحميل الرد');
-            }
-        }
-
-        function deleteSavedResponse(id) {
-            if (!confirm('هل أنت متأكد من حذف هذا الرد؟')) return;
-            savedResponses = savedResponses.filter(r => r.id !== id);
-            localStorage.setItem('savedResponses', JSON.stringify(savedResponses));
-            renderSavedResponses();
-            updateStats();
-            showToast('تم حذف الرد');
-        }
-
-        function renderTemplates() {
-            const grid = document.getElementById('templatesGrid');
-            grid.innerHTML = responseTemplates.map(template =>
-                '<div class="template-card" onclick="useTemplate(' + template.id + ')">' +
-                '<div class="template-icon">' + template.icon + '</div>' +
-                '<div class="template-name">' + template.name + '</div>' +
-                '</div>'
-            ).join('');
-        }
-
-        function useTemplate(id) {
-            const template = responseTemplates.find(t => t.id === id);
-            if (template) {
-                document.getElementById('finalOutput').value = template.text;
-                switchTab('write');
-                showToast('تم تحميل القالب (يمكنك تعديله)');
-            }
-        }
-
-        function renderCategoryFilter() {
-            const categories = Array.from(new Set(legalArticles.map(a => a.category)));
-            const container = document.getElementById('categoryFilter');
-            let html = '<button class="category-btn active" data-category="all" onclick="filterByCategory(\'all\')">الكل</button>';
-            categories.forEach(cat => {
-                html += '<button class="category-btn" data-category="' + cat + '" onclick="filterByCategory(\'' + cat + '\')">' + cat + '</button>';
-            });
-            container.innerHTML = html;
-        }
-
-        function filterByCategory(category) {
-            currentFilter = category;
-            document.querySelectorAll('.category-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.category === category);
-            });
-            const filtered = category === 'all' ? legalArticles : legalArticles.filter(a => a.category === category);
-            renderArticles(filtered);
-        }
-
-        function searchArticles() {
-            const query = document.getElementById('articleSearch').value.trim();
-            if (!query) { filterByCategory(currentFilter); return; }
-            const normalizedQuery = normalizeArabic(query);
-            const results = legalArticles.filter(article =>
-                normalizeArabic(article.text).includes(normalizedQuery) ||
-                normalizeArabic(article.title).includes(normalizedQuery) ||
-                normalizeArabic(article.number).includes(normalizedQuery) ||
-                article.keywords.some(k => normalizeArabic(k).includes(normalizedQuery))
-            );
-            renderArticles(results);
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tab === tab);
-            });
-            document.getElementById('writeTab').classList.toggle('active', tab === 'write');
-            document.getElementById('templatesTab').classList.toggle('active', tab === 'templates');
-        }
-
-        function clearInput() {
-            document.getElementById('beneficiaryMessage').value = '';
-            document.getElementById('userResponse').value = '';
-            document.getElementById('finalOutput').value = '';
-            document.getElementById('analysisBox').classList.remove('show');
-            selectedArticles = [];
-            document.querySelectorAll('.article-item').forEach(el => el.classList.remove('selected'));
-            showToast('تم مسح البيانات');
-        }
-
-        function updateStats() {
-            document.getElementById('savedCount').textContent = savedResponses.length;
-        }
-
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
