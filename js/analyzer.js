@@ -34,7 +34,10 @@ export function detectIntent(normalizedText, intentPatterns) {
         });
         if (matchCount > 0) {
             detected.push({
-                intent: pattern.intent,
+                id: pattern.id,
+                label: pattern.label,
+                boostCategories: pattern.boostCategories || {},
+                responseText: pattern.responseText || '',
                 score: matchCount * pattern.priority,
                 matches: matchCount,
             });
@@ -44,15 +47,20 @@ export function detectIntent(normalizedText, intentPatterns) {
 }
 
 export function detectTone(normalizedText, toneIndicators) {
-    const scores = { complaint: 0, inquiry: 0, request: 0, urgent: 0 };
+    // تُبنى النبرات من مفاتيح JSON نفسها حتى لا تنكسر الدالة عند إضافة نبرة جديدة.
+    const scores = {};
     for (const [tone, words] of Object.entries(toneIndicators)) {
+        scores[tone] = 0;
         words.forEach(w => {
             if (normalizedText.includes(normalizeArabic(w))) scores[tone]++;
         });
     }
-    const isUrgent = scores.urgent > 0;
+    const isUrgent = (scores.urgent || 0) > 0;
     delete scores.urgent;
-    const dominant = Object.entries(scores).reduce((a, b) => (b[1] > a[1] ? b : a));
+    const entries = Object.entries(scores);
+    const dominant = entries.length
+        ? entries.reduce((a, b) => (b[1] > a[1] ? b : a))
+        : ['neutral', 0];
     return {
         primary: dominant[1] > 0 ? dominant[0] : 'neutral',
         urgent: isUrgent,
@@ -62,22 +70,19 @@ export function detectTone(normalizedText, toneIndicators) {
 
 export function extractEntities(originalText) {
     const entities = [];
+    const seen = new Set();
+    const add = (type, value) => {
+        if (seen.has(value)) return;
+        seen.add(value);
+        entities.push({ type, value });
+    };
 
-    const requestNumbers = originalText.match(/\b\d{7,}\b/g);
-    if (requestNumbers) requestNumbers.forEach(n => entities.push({ type: 'رقم طلب/مذكرة', value: n }));
+    // الأنواع الأكثر تحديداً أولاً حتى لا يُصنّف الرقم نفسه مرتين (جوال/هوية ثم رقم طلب).
+    (originalText.match(/\b05\d{8}\b/g) || []).forEach(p => add('رقم جوال', p));
+    (originalText.match(/\b[12]\d{9}\b/g) || []).forEach(id => add('رقم هوية', id));
+    (originalText.match(/\b\d{7,}\b/g) || []).forEach(n => add('رقم طلب/مذكرة', n));
+    (originalText.match(/\b\d{1,4}[\/\-]\d{1,2}[\/\-]\d{1,4}\b/g) || []).forEach(d => add('تاريخ', d));
 
-    const dates = originalText.match(/\b\d{1,4}[\/\-]\d{1,2}[\/\-]\d{1,4}\b/g);
-    if (dates) dates.forEach(d => entities.push({ type: 'تاريخ', value: d }));
-
-    const phones = originalText.match(/\b05\d{8}\b/g);
-    if (phones) phones.forEach(p => entities.push({ type: 'رقم جوال', value: p }));
-
-    const ids = originalText.match(/\b[12]\d{9}\b/g);
-    if (ids) {
-        ids.forEach(id => {
-            if (!entities.find(e => e.value === id)) entities.push({ type: 'رقم هوية', value: id });
-        });
-    }
     return entities;
 }
 
@@ -99,14 +104,8 @@ export function findRelevantArticles(articles, keywords, intents) {
         });
 
         if (intents.length > 0) {
-            const topIntent = intents[0].intent;
-            if (topIntent.includes('موعد') && article.category === 'الجلسات') score += 20;
-            if (topIntent.includes('موعد') && article.category === 'المواعيد') score += 15;
-            if (topIntent.includes('إغلاق') && article.category === 'الاعتراض') score += 15;
-            if (topIntent.includes('استئناف') && article.category === 'الاعتراض') score += 20;
-            if (topIntent.includes('تبليغ') && article.category === 'التبليغ') score += 20;
-            if (topIntent.includes('أحوال شخصية') && article.category === 'الأحوال الشخصية') score += 20;
-            if (topIntent.includes('ورثة') && article.category === 'حصر الورثة') score += 20;
+            const boosts = intents[0].boostCategories || {};
+            score += boosts[article.category] || 0;
         }
 
         return { ...article, score };

@@ -48,6 +48,11 @@
     </header>
 
     <main class="main-container">
+        <div class="load-error full-width" id="loadErrorCard">
+            <div class="icon">⚠️</div>
+            <p>تعذّر تحميل بيانات التطبيق. تأكد من اتصالك ثم أعد المحاولة.</p>
+            <button class="btn btn-primary" id="retryLoadBtn">🔄 إعادة المحاولة</button>
+        </div>
         <div class="card" id="beneficiaryMessageCard">
             <div class="card-header"><span class="icon">📝</span><h2>رسالة المستفيد</h2></div>
             <div class="card-body">
@@ -121,6 +126,7 @@
                     <button class="btn btn-secondary" id="saveBtn"><span>💾</span> حفظ</button>
                     <button class="btn btn-outline" id="printBtn"><span>🖨️</span> طباعة</button>
                     <button class="btn btn-outline" id="clearOutputBtn"><span>🧹</span> مسح الرد</button>
+                    <button class="btn btn-outline hidden" id="undoOutputBtn"><span>↩️</span> تراجع</button>
                 </div>
             </div>
         </div>

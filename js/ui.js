@@ -53,7 +53,7 @@ export function renderAnalysis(analysis) {
     if (analysis.detectedIntents.length > 0) {
         html += '<div class="analysis-item"><strong>الموضوع الرئيسي:</strong><div class="tag-list">';
         analysis.detectedIntents.forEach(i => {
-            html += `<span class="tag intent">${escapeHtml(i.intent)}</span>`;
+            html += `<span class="tag intent">${escapeHtml(i.label)}</span>`;
         });
         html += '</div></div>';
     }
@@ -148,7 +148,7 @@ export function renderSavedResponses(savedResponses, searchQuery = '') {
                 <button data-action="load" data-id="${response.id}" title="تحميل">📂</button>
                 <button data-action="delete" data-id="${response.id}" title="حذف">🗑️</button>
             </div>
-            <div class="saved-item-preview">${escapeHtml(response.preview)}...</div>
+            <div class="saved-item-preview">${escapeHtml(response.preview)}${response.text.length > response.preview.length ? '…' : ''}</div>
             <div class="saved-item-date">${escapeHtml(response.date)}</div>
         </div>`,
     ).join('');

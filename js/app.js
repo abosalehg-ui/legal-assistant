@@ -43,11 +43,23 @@ const app = {
     savedResponses: [],
     currentFilter: 'all',
     lastAnalysisIntent: null,
+    lastEntities: [],
+    outputBackup: null,
 };
 
 initTheme();
 
 document.addEventListener('DOMContentLoaded', start);
+
+function showLoadError() {
+    const box = document.getElementById('loadErrorCard');
+    if (!box) return;
+    box.classList.add('show');
+    document.getElementById('retryLoadBtn')?.addEventListener('click', () => {
+        box.classList.remove('show');
+        start();
+    }, { once: true });
+}
 
 async function start() {
     try {
@@ -55,6 +67,7 @@ async function start() {
     } catch (err) {
         console.error(err);
         showToast('تعذّر تحميل بيانات التطبيق');
+        showLoadError();
         return;
     }
     app.savedResponses = loadSavedResponses();
@@ -74,7 +87,12 @@ async function start() {
         renderCategoryFilter(uniqueCategories());
         refreshStats();
         if (app.currentFilter !== 'all') {
-            filterByCategory(app.currentFilter);
+            // إذا حُذفت الفئة المفلترة نعود إلى «الكل» بدل فلتر يشير لفئة غير موجودة.
+            if (!uniqueCategories().includes(app.currentFilter)) {
+                filterByCategory('all');
+            } else {
+                filterByCategory(app.currentFilter);
+            }
         }
     });
 
@@ -100,8 +118,35 @@ function refreshStats() {
     renderStats(stats, app.data.articles.length);
 }
 
+// يستبدل الرد النهائي مع حفظ نسخة للتراجع إن كان هناك نص سيُفقد.
+function setOutput(newValue) {
+    const output = document.getElementById('finalOutput');
+    const current = output.value;
+    if (current.trim() && current !== newValue) {
+        app.outputBackup = current;
+        document.getElementById('undoOutputBtn')?.classList.remove('hidden');
+    }
+    output.value = newValue;
+}
+
+function undoOutput() {
+    if (app.outputBackup === null) {
+        showToast('لا يوجد ما يُتراجع عنه');
+        return;
+    }
+    const output = document.getElementById('finalOutput');
+    const current = output.value;
+    output.value = app.outputBackup;
+    app.outputBackup = current.trim() ? current : null;
+    if (app.outputBackup === null) {
+        document.getElementById('undoOutputBtn')?.classList.add('hidden');
+    }
+    showToast('تم التراجع');
+}
+
 function bindEvents() {
     document.getElementById('analyzeBtn').addEventListener('click', analyzeMessage);
+    document.getElementById('undoOutputBtn')?.addEventListener('click', undoOutput);
     document.getElementById('clearInputBtn').addEventListener('click', clearInput);
     document.getElementById('improveBtn').addEventListener('click', handleImprove);
     document.getElementById('addArticleBtn').addEventListener('click', addSelectedArticleToOutput);
@@ -176,9 +221,13 @@ function analyzeMessage() {
     renderArticles(relevantArticles, app.selectedArticleIds);
 
     app.lastAnalysisIntent = detectedIntents[0] || null;
+    app.lastEntities = entities;
 
-    const response = suggestResponse(message, relevantArticles, detectedIntents, entities, app.data.language);
-    document.getElementById('finalOutput').value = response;
+    const response = suggestResponse(
+        message, relevantArticles, detectedIntents, entities,
+        app.data.language, app.data.defaultResponse,
+    );
+    setOutput(response);
 
     showToast(`تم العثور على ${relevantArticles.length} مادة ذات صلة`);
 }
@@ -214,7 +263,7 @@ function handleImprove() {
         showToast('يرجى كتابة الرد أولاً');
         return;
     }
-    document.getElementById('finalOutput').value = improveLanguage(input, app.data.language);
+    setOutput(improveLanguage(input, app.data.language));
     showToast('تم تحسين الصياغة بنجاح');
 }
 
@@ -242,7 +291,7 @@ function handleSave() {
         showToast('لا يوجد رد للحفظ');
         return;
     }
-    const category = app.lastAnalysisIntent ? app.lastAnalysisIntent.intent : null;
+    const category = app.lastAnalysisIntent ? app.lastAnalysisIntent.label : null;
     if (!addResponse(output, category)) {
         showToast('تعذّر الحفظ: امتلأت مساحة التخزين، احذف بعض الردود القديمة');
         return;
@@ -282,7 +331,7 @@ function clearInput() {
 function loadSavedResponseToOutput(id) {
     const response = findResponse(id);
     if (response) {
-        document.getElementById('finalOutput').value = response.text;
+        setOutput(response.text);
         showToast('تم تحميل الرد');
     }
 }
@@ -326,7 +375,7 @@ function searchArticles() {
 function useTemplate(id) {
     const template = app.data.templates.find(t => t.id === id);
     if (!template) return;
-    document.getElementById('finalOutput').value = template.text;
+    setOutput(template.text);
     switchTab('write');
     showToast('تم تحميل القالب (يمكنك تعديله)');
 }

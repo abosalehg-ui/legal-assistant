@@ -1,7 +1,14 @@
 // شاشة إدارة المواد النظامية + تصدير/استيراد.
 
 import { escapeHtml, showToast } from './ui.js';
-import { saveCustomArticles, saveDeletedArticleIds, resetCustomArticles, isSafeUrl } from './data.js';
+import {
+    saveCustomArticles,
+    saveDeletedArticleIds,
+    resetCustomArticles,
+    isSafeUrl,
+    mergeArticles,
+    validateArticle,
+} from './data.js';
 
 let state = null;
 
@@ -83,11 +90,7 @@ function deleteArticle(id) {
 }
 
 function rebuildMerged() {
-    const map = new Map();
-    state.baseArticles.forEach(a => map.set(a.id, a));
-    state.customArticles.forEach(a => map.set(a.id, a));
-    state.deletedIds.forEach(id => map.delete(id));
-    state.articles = Array.from(map.values());
+    state.articles = mergeArticles(state.baseArticles, state.customArticles, state.deletedIds);
 }
 
 function clearForm() {
@@ -126,7 +129,12 @@ function readForm() {
         showToast('رابط المصدر يجب أن يكون رابط https صالحاً');
         return null;
     }
-    return { id, number, title, category, keywords, sourceUrl, text };
+    const article = validateArticle({ id, number, title, category, keywords, sourceUrl, text });
+    if (!article) {
+        showToast('تعذّر التحقق من بيانات المادة');
+        return null;
+    }
+    return article;
 }
 
 function bindAdminEvents() {
@@ -198,11 +206,8 @@ function bindAdminEvents() {
             const parsed = JSON.parse(text);
             if (!Array.isArray(parsed)) throw new Error('not-array');
 
-            const valid = parsed.filter(a => a.id && a.number && a.title && a.text && a.category);
-            valid.forEach(a => {
-                if (!Array.isArray(a.keywords)) a.keywords = [];
-                if (a.sourceUrl && !isSafeUrl(a.sourceUrl)) a.sourceUrl = '';
-            });
+            const valid = parsed.map(validateArticle).filter(Boolean);
+            const rejected = parsed.length - valid.length;
 
             if (!saveCustomArticles(valid)) {
                 showToast('تعذّر الاستيراد: امتلأت مساحة التخزين المحلية');
@@ -214,7 +219,9 @@ function bindAdminEvents() {
             saveDeletedArticleIds([]);
             rebuildMerged();
             state.onChange(state);
-            showToast(`تم استيراد ${valid.length} مادة`);
+            showToast(rejected > 0
+                ? `تم استيراد ${valid.length} مادة (رُفضت ${rejected} لعدم اكتمال بياناتها)`
+                : `تم استيراد ${valid.length} مادة`);
         } catch {
             showToast('ملف غير صالح');
         }

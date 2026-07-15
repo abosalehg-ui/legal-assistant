@@ -2,6 +2,9 @@
 
 const KEY = 'savedResponses';
 
+// حد أقصى للأرشيف يمنع النمو غير المحدود وامتلاء مساحة التخزين.
+export const MAX_SAVED = 500;
+
 export function loadSavedResponses() {
     try {
         return JSON.parse(localStorage.getItem(KEY) || '[]');
@@ -32,6 +35,7 @@ export function addResponse(text, category = null) {
         preview: text.substring(0, 100),
     };
     list.unshift(item);
+    if (list.length > MAX_SAVED) list.length = MAX_SAVED;
     return persist(list) ? item : null;
 }
 
