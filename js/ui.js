@@ -47,7 +47,7 @@ export function renderAnalysis(analysis) {
 
     let html = '';
     html += `<div class="analysis-item"><strong>نبرة الرسالة:</strong> <span class="tag ${toneInfo.class}">${escapeHtml(toneInfo.label)}</span>`;
-    if (analysis.tone.urgent) html += ' <span class="tag" style="background:#e67e22;">⚡ عاجل</span>';
+    if (analysis.tone.urgent) html += ' <span class="tag urgent">⚡ عاجل</span>';
     html += '</div>';
 
     if (analysis.detectedIntents.length > 0) {

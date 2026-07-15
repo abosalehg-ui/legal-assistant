@@ -488,6 +488,7 @@ input[type="text"], input[type="url"] {
 
 .tag.intent { background: var(--secondary); color: var(--primary-dark); }
 .tag.entity { background: var(--primary-light); }
+.tag.urgent { background: #e67e22; color: #fff; }
 .tag.tone-complaint { background: #c0392b; color: #fff; }
 .tag.tone-inquiry { background: #2980b9; color: #fff; }
 .tag.tone-request { background: #8e44ad; color: #fff; }
@@ -500,6 +501,23 @@ input[type="text"], input[type="url"] {
 .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
 
 .hidden { display: none !important; }
+.mt-1 { margin-top: 1rem; }
+.required { color: #c0392b; }
+
+.divider {
+    margin: 1.5rem 0;
+    border: none;
+    border-top: 1px solid var(--border);
+}
+
+.section-subtitle {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.modal.modal-sm { max-width: 480px; }
+.stat-block .value.value-sm { font-size: 1rem; }
 
 /* بطاقة خطأ تحميل البيانات: مخفية افتراضياً وتظهر عند فشل التحميل */
 .load-error {

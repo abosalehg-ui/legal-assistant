@@ -81,7 +81,7 @@ export function extractEntities(originalText) {
     (originalText.match(/\b05\d{8}\b/g) || []).forEach(p => add('رقم جوال', p));
     (originalText.match(/\b[12]\d{9}\b/g) || []).forEach(id => add('رقم هوية', id));
     (originalText.match(/\b\d{7,}\b/g) || []).forEach(n => add('رقم طلب/مذكرة', n));
-    (originalText.match(/\b\d{1,4}[\/\-]\d{1,2}[\/\-]\d{1,4}\b/g) || []).forEach(d => add('تاريخ', d));
+    (originalText.match(/\b\d{1,4}[/-]\d{1,2}[/-]\d{1,4}\b/g) || []).forEach(d => add('تاريخ', d));
 
     return entities;
 }

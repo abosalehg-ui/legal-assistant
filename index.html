@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مساعد الردود للمستفيدين | نظام المرافعات الشرعية</title>
     <meta name="description" content="أداة تساعد موظفي المحاكم على تحليل رسائل المستفيدين وصياغة ردود رسمية مستندة إلى اللوائح التنفيذية لنظام المرافعات الشرعية.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚖️</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/fonts.css">
     <link rel="stylesheet" href="css/themes.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/print.css">
@@ -121,7 +122,7 @@
                     <span>يمكنك تعديل الرد مباشرة قبل النسخ أو الحفظ</span>
                 </div>
                 <textarea id="finalOutput" class="output-box" placeholder="سيظهر الرد المقترح هنا... ويمكنك التعديل عليه بحرية قبل النسخ أو الحفظ"></textarea>
-                <div class="btn-group" style="margin-top: 1rem;">
+                <div class="btn-group mt-1">
                     <button class="btn btn-primary" id="copyBtn"><span>📋</span> نسخ الرد</button>
                     <button class="btn btn-secondary" id="saveBtn"><span>💾</span> حفظ</button>
                     <button class="btn btn-outline" id="printBtn"><span>🖨️</span> طباعة</button>
@@ -148,7 +149,7 @@
                         <div class="label">آخر ٧ أيام</div>
                     </div>
                     <div class="stat-block">
-                        <div class="value" id="statTopCategory" style="font-size:1rem;">—</div>
+                        <div class="value value-sm" id="statTopCategory">—</div>
                         <div class="label">الأكثر تكراراً</div>
                     </div>
                 </div>
@@ -176,19 +177,19 @@
             <div class="modal-body">
                 <div class="form-row">
                     <div class="form-field">
-                        <label for="fId">المعرّف (id) <span style="color:#c0392b">*</span></label>
+                        <label for="fId">المعرّف (id) <span class="required">*</span></label>
                         <input type="text" id="fId" placeholder="مثال: 1/100">
                     </div>
                     <div class="form-field">
-                        <label for="fNumber">رقم المادة <span style="color:#c0392b">*</span></label>
+                        <label for="fNumber">رقم المادة <span class="required">*</span></label>
                         <input type="text" id="fNumber" placeholder="مثال: المادة 1/100">
                     </div>
                     <div class="form-field full">
-                        <label for="fTitle">العنوان <span style="color:#c0392b">*</span></label>
+                        <label for="fTitle">العنوان <span class="required">*</span></label>
                         <input type="text" id="fTitle" placeholder="عنوان المادة">
                     </div>
                     <div class="form-field">
-                        <label for="fCategory">الفئة <span style="color:#c0392b">*</span></label>
+                        <label for="fCategory">الفئة <span class="required">*</span></label>
                         <input type="text" id="fCategory" placeholder="مثال: التبليغ">
                     </div>
                     <div class="form-field">
@@ -200,7 +201,7 @@
                         <input type="text" id="fKeywords" placeholder="تبليغ، إشعار، حضور">
                     </div>
                     <div class="form-field full">
-                        <label for="fText">نص المادة <span style="color:#c0392b">*</span></label>
+                        <label for="fText">نص المادة <span class="required">*</span></label>
                         <textarea id="fText" placeholder="نص المادة الكامل..."></textarea>
                     </div>
                 </div>
@@ -208,8 +209,8 @@
                     <button class="btn btn-primary" id="adminSave">💾 حفظ</button>
                     <button class="btn btn-outline" id="adminClear">🧹 مسح النموذج</button>
                 </div>
-                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border);">
-                <h3 style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 0.75rem;">المواد الحالية</h3>
+                <hr class="divider">
+                <h3 class="section-subtitle">المواد الحالية</h3>
                 <div class="admin-list" id="adminList"></div>
             </div>
             <div class="modal-footer">
@@ -224,7 +225,7 @@
 
     <!-- Modal: الاختصارات -->
     <div class="modal-overlay" id="shortcutsModal">
-        <div class="modal" style="max-width: 480px;">
+        <div class="modal modal-sm">
             <div class="modal-header">
                 <h2>⌨️ اختصارات لوحة المفاتيح</h2>
                 <button class="modal-close" data-close-modal>✕</button>
