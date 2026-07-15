@@ -1,7 +1,7 @@
 // شاشة إدارة المواد النظامية + تصدير/استيراد.
 
 import { escapeHtml, showToast } from './ui.js';
-import { saveCustomArticles, saveDeletedArticleIds, resetCustomArticles } from './data.js';
+import { saveCustomArticles, saveDeletedArticleIds, resetCustomArticles, isSafeUrl } from './data.js';
 
 let state = null;
 
@@ -56,28 +56,30 @@ function upsertCustom(article) {
     const list = state.customArticles.filter(a => a.id !== article.id);
     list.push(article);
     state.customArticles = list;
-    saveCustomArticles(list);
+    const saved = saveCustomArticles(list);
 
     state.deletedIds = state.deletedIds.filter(id => id !== article.id);
     saveDeletedArticleIds(state.deletedIds);
 
     rebuildMerged();
     state.onChange(state);
+    return saved;
 }
 
 function deleteArticle(id) {
     const isBase = state.baseArticles.some(a => a.id === id);
 
     state.customArticles = state.customArticles.filter(a => a.id !== id);
-    saveCustomArticles(state.customArticles);
+    let saved = saveCustomArticles(state.customArticles);
 
     if (isBase && !state.deletedIds.includes(id)) {
         state.deletedIds.push(id);
-        saveDeletedArticleIds(state.deletedIds);
+        saved = saveDeletedArticleIds(state.deletedIds) && saved;
     }
 
     rebuildMerged();
     state.onChange(state);
+    if (!saved) showToast('تعذّر حفظ التغيير: امتلأت مساحة التخزين المحلية');
 }
 
 function rebuildMerged() {
@@ -120,6 +122,10 @@ function readForm() {
         showToast('يرجى تعبئة الحقول الأساسية');
         return null;
     }
+    if (sourceUrl && !isSafeUrl(sourceUrl)) {
+        showToast('رابط المصدر يجب أن يكون رابط https صالحاً');
+        return null;
+    }
     return { id, number, title, category, keywords, sourceUrl, text };
 }
 
@@ -145,7 +151,10 @@ function bindAdminEvents() {
     document.getElementById('adminSave')?.addEventListener('click', () => {
         const article = readForm();
         if (!article) return;
-        upsertCustom(article);
+        if (!upsertCustom(article)) {
+            showToast('تعذّر الحفظ: امتلأت مساحة التخزين المحلية');
+            return;
+        }
         clearForm();
         showToast('تم حفظ المادة');
     });
@@ -180,6 +189,10 @@ function bindAdminEvents() {
     document.getElementById('adminImportFile')?.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        if (!confirm('سيستبدل الاستيراد كل المواد المخصصة الحالية ويعيد المواد المحذوفة سابقاً. هل أنت متأكد؟')) {
+            e.target.value = '';
+            return;
+        }
         try {
             const text = await file.text();
             const parsed = JSON.parse(text);
@@ -188,10 +201,15 @@ function bindAdminEvents() {
             const valid = parsed.filter(a => a.id && a.number && a.title && a.text && a.category);
             valid.forEach(a => {
                 if (!Array.isArray(a.keywords)) a.keywords = [];
+                if (a.sourceUrl && !isSafeUrl(a.sourceUrl)) a.sourceUrl = '';
             });
 
+            if (!saveCustomArticles(valid)) {
+                showToast('تعذّر الاستيراد: امتلأت مساحة التخزين المحلية');
+                e.target.value = '';
+                return;
+            }
             state.customArticles = valid;
-            saveCustomArticles(valid);
             state.deletedIds = [];
             saveDeletedArticleIds([]);
             rebuildMerged();
