@@ -27,12 +27,32 @@ function getDeletedArticleIds() {
     }
 }
 
+// تعيد false عند فشل الكتابة (مثل امتلاء مساحة التخزين) بدل رمي استثناء.
+function safeSetItem(key, value) {
+    try {
+        localStorage.setItem(key, value);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 export function saveCustomArticles(list) {
-    localStorage.setItem(STORAGE_KEYS.customArticles, JSON.stringify(list));
+    return safeSetItem(STORAGE_KEYS.customArticles, JSON.stringify(list));
 }
 
 export function saveDeletedArticleIds(ids) {
-    localStorage.setItem(STORAGE_KEYS.deletedArticles, JSON.stringify(ids));
+    return safeSetItem(STORAGE_KEYS.deletedArticles, JSON.stringify(ids));
+}
+
+// يقبل روابط https فقط؛ يمنع أنظمة خطرة مثل javascript:
+export function isSafeUrl(url) {
+    if (!url) return false;
+    try {
+        return new URL(url).protocol === 'https:';
+    } catch {
+        return false;
+    }
 }
 
 export function resetCustomArticles() {
@@ -72,5 +92,3 @@ export async function loadData() {
         language,
     };
 }
-
-export { STORAGE_KEYS };

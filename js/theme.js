@@ -28,7 +28,11 @@ export function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme') || 'light';
     const next = current === 'dark' ? 'light' : 'dark';
     applyTheme(next);
-    localStorage.setItem(KEY, next);
+    try {
+        localStorage.setItem(KEY, next);
+    } catch {
+        // فشل حفظ التفضيل لا يمنع تبديل الوضع في الجلسة الحالية
+    }
     return next;
 }
 

@@ -31,7 +31,6 @@ import {
     renderSavedResponses,
     renderStats,
     openModal,
-    closeModal,
     closeAllModals,
 } from './ui.js';
 import { initTheme, toggleTheme } from './theme.js';
@@ -71,6 +70,7 @@ async function start() {
         app.data.customArticles = newState.customArticles;
         app.data.deletedIds = newState.deletedIds;
         app.data.articles = newState.articles;
+        setAdminState(newState);
         renderCategoryFilter(uniqueCategories());
         refreshStats();
         if (app.currentFilter !== 'all') {
@@ -243,7 +243,10 @@ function handleSave() {
         return;
     }
     const category = app.lastAnalysisIntent ? app.lastAnalysisIntent.intent : null;
-    addResponse(output, category);
+    if (!addResponse(output, category)) {
+        showToast('تعذّر الحفظ: امتلأت مساحة التخزين، احذف بعض الردود القديمة');
+        return;
+    }
     app.savedResponses = loadSavedResponses();
     renderSavedResponses(app.savedResponses, document.getElementById('savedSearch').value);
     refreshStats();

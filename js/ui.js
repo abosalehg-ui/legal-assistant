@@ -1,9 +1,14 @@
 // عرض العناصر في الـ DOM وإدارة Toast والـ Modals.
 
+import { isSafeUrl } from './data.js';
+
 export function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text == null ? '' : String(text);
-    return div.innerHTML;
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 export function showToast(message) {
@@ -86,7 +91,7 @@ export function renderArticles(articles, selectedIds) {
             ? `<span class="article-score">تطابق ${article.score}</span>`
             : '';
         const isSelected = selectedIds.includes(article.id) ? 'selected' : '';
-        const sourceLink = article.sourceUrl
+        const sourceLink = isSafeUrl(article.sourceUrl)
             ? `<a class="article-source" href="${escapeHtml(article.sourceUrl)}" target="_blank" rel="noopener" title="المصدر الرسمي" data-no-toggle>🔗</a>`
             : '';
         const truncated = article.text.length > 150

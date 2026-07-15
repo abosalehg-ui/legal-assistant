@@ -10,10 +10,17 @@ export function loadSavedResponses() {
     }
 }
 
+// تعيد false عند فشل الكتابة (مثل امتلاء مساحة التخزين) بدل رمي استثناء.
 function persist(list) {
-    localStorage.setItem(KEY, JSON.stringify(list));
+    try {
+        localStorage.setItem(KEY, JSON.stringify(list));
+        return true;
+    } catch {
+        return false;
+    }
 }
 
+// تعيد العنصر المحفوظ، أو null إذا تعذّرت الكتابة.
 export function addResponse(text, category = null) {
     const list = loadSavedResponses();
     const item = {
@@ -25,8 +32,7 @@ export function addResponse(text, category = null) {
         preview: text.substring(0, 100),
     };
     list.unshift(item);
-    persist(list);
-    return item;
+    return persist(list) ? item : null;
 }
 
 export function deleteResponse(id) {
