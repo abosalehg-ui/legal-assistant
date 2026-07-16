@@ -326,6 +326,8 @@ input[type="text"], input[type="url"] {
     color: var(--text-secondary);
 }
 
+.archive-actions { margin-bottom: 1rem; }
+
 .saved-list { max-height: 300px; overflow-y: auto; }
 
 .saved-item {

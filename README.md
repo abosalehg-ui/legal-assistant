@@ -38,6 +38,10 @@
 | ⚙️ **إدارة المواد** | إضافة/تعديل/حذف المواد، تصدير واستيراد كملف JSON |
 | 🔗 **روابط المصادر** | كل مادة مرتبطة بمصدرها الرسمي في laws.boe.gov.sa |
 | 📱 **تصميم متجاوب** | يعمل بسلاسة على الهاتف والحاسب |
+| 📤 **تصدير/استيراد الأرشيف** | نسخ احتياطي للردود المحفوظة كملف JSON واستعادتها |
+| 🧩 **قوالب بحقول ذكية** | تعبئة تلقائية لرقم الطلب وتحديد الحقول المطلوبة |
+| 📴 **يعمل دون اتصال (PWA)** | قابل للتثبيت ويعمل بلا إنترنت بعد أول فتح |
+| ♿ **إتاحة الوصول** | دعم قارئ الشاشة، تنقل بلوحة المفاتيح، حبس تركيز في النوافذ |
 
 ---
 
@@ -90,6 +94,9 @@ python3 -m http.server 8000
 * **CSS3** — التصميم والتنسيق مع متغيرات للوضع الفاتح/الداكن
 * **JavaScript (ES Modules)** — منطق التطبيق مقسّم على وحدات بدون أي build step
 * **JSON** — قاعدة بيانات المواد والقوالب قابلة للتحرير المباشر
+* **Service Worker + Web App Manifest** — عمل دون اتصال وقابلية التثبيت (PWA)
+* **خطوط مستضافة ذاتياً** — Tajawal وAmiri دون طلبات لأي طرف ثالث
+* **node:test + ESLint + Prettier + GitHub Actions** — اختبارات وفحص جودة وتكامل مستمر
 
 ---
 
@@ -113,26 +120,54 @@ python3 -m http.server 8000
 legal-assistant/
 ├── index.html                  # هيكل HTML
 ├── README.md                   # توثيق المشروع
+├── CONTRIBUTING.md             # دليل المساهمة وبنية ملفات JSON
+├── LICENSE                     # رخصة MIT
+├── manifest.webmanifest        # بيان تطبيق الويب (PWA)
+├── sw.js                       # Service Worker للعمل دون اتصال
+├── icon.svg                    # أيقونة التطبيق
+├── package.json                # سكربتات npm وأدوات التطوير
+├── eslint.config.js            # إعداد ESLint
+├── .github/workflows/ci.yml    # تكامل مستمر (lint + test)
 ├── css/
+│   ├── fonts.css               # خطوط مستضافة ذاتياً
 │   ├── themes.css              # متغيرات الوضع الفاتح/الداكن
 │   ├── styles.css              # تنسيقات الواجهة
 │   └── print.css               # تنسيق الطباعة
+├── fonts/                      # ملفات woff2 (Tajawal + Amiri)
 ├── data/
-│   ├── articles.json           # المواد النظامية
+│   ├── articles.json           # المواد النظامية (مع حقل lastVerified)
 │   ├── templates.json          # القوالب الجاهزة
-│   ├── intents.json            # أنماط النوايا والمرادفات
+│   ├── intents.json            # أنماط النوايا والردود والمرادفات
 │   └── colloquial-map.json     # قاموس عامية → فصحى
+├── tests/                      # اختبارات وحدة (node:test)
+│   ├── analyzer.test.js
+│   ├── response.test.js
+│   ├── storage.test.js
+│   └── data.test.js
 └── js/
     ├── app.js                  # نقطة الدخول وربط الأحداث
-    ├── data.js                 # تحميل JSON ودمج التعديلات
+    ├── data.js                 # تحميل JSON ودمج التعديلات والتحقق
     ├── analyzer.js             # تحليل الرسائل
     ├── response.js             # توليد الرد وتحسين الصياغة
-    ├── storage.js              # localStorage للردود
+    ├── storage.js              # localStorage للردود والأرشيف
     ├── ui.js                   # عرض العناصر وToast/Modals
     ├── theme.js                # وضع داكن/فاتح
     ├── shortcuts.js            # اختصارات لوحة المفاتيح
     └── admin.js                # شاشة إدارة المواد
 ```
+
+---
+
+## 🧪 التطوير والاختبار
+
+```bash
+npm install        # أدوات التطوير فقط (التطبيق نفسه بلا اعتماديات)
+npm run serve      # خادم محلي على http://localhost:8000
+npm test           # اختبارات الوحدة (node:test)
+npm run lint       # فحص ESLint
+```
+
+للمزيد عن بنية ملفات البيانات وكيفية إضافة مواد نظامية، انظر [دليل المساهمة](CONTRIBUTING.md).
 
 ---
 

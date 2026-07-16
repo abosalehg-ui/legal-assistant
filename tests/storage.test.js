@@ -18,8 +18,15 @@ function makeLocalStorageMock() {
 
 globalThis.localStorage = makeLocalStorageMock();
 
-const { loadSavedResponses, addResponse, deleteResponse, findResponse, computeStats, MAX_SAVED } =
-    await import('../js/storage.js');
+const {
+    loadSavedResponses,
+    addResponse,
+    deleteResponse,
+    findResponse,
+    importResponses,
+    computeStats,
+    MAX_SAVED,
+} = await import('../js/storage.js');
 
 beforeEach(() => {
     globalThis.localStorage.clear();
@@ -65,6 +72,33 @@ test('deleteResponse و findResponse', () => {
 test('loadSavedResponses: يتعافى من JSON تالف', () => {
     globalThis.localStorage.setItem('savedResponses', '{ليس json صالحاً');
     assert.deepEqual(loadSavedResponses(), []);
+});
+
+test('importResponses: يدمج الردود الجديدة ويتجاهل المعرفات الموجودة', () => {
+    addResponse('موجود');
+    const existing = loadSavedResponses()[0];
+    const added = importResponses([
+        { id: existing.id, text: 'مكرر' },
+        { id: 9001, text: 'جديد أ', timestamp: 9001 },
+        { id: 9002, text: 'جديد ب', timestamp: 9002 },
+    ]);
+    assert.equal(added, 2);
+    const list = loadSavedResponses();
+    assert.equal(list.length, 3);
+    // العنصر المكرر لم يُستبدل نصه
+    assert.equal(findResponse(existing.id).text, 'موجود');
+});
+
+test('importResponses: يرفض غير المصفوفة ويتخطى العناصر بلا نص', () => {
+    assert.equal(importResponses({}), -1);
+    assert.equal(importResponses('نص'), -1);
+    const added = importResponses([{ text: '' }, { foo: 1 }, null, { text: '   ' }]);
+    assert.equal(added, 0);
+});
+
+test('importResponses: يعيد null عند امتلاء مساحة التخزين', () => {
+    globalThis.__quotaFull = true;
+    assert.equal(importResponses([{ id: 1, text: 'x' }]), null);
 });
 
 test('computeStats: اليوم والأسبوع والفئة الأكثر تكراراً', () => {

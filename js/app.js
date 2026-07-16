@@ -20,6 +20,7 @@ import {
     addResponse,
     deleteResponse,
     findResponse,
+    importResponses,
     computeStats,
 } from './storage.js';
 import {
@@ -31,6 +32,7 @@ import {
     renderSavedResponses,
     renderStats,
     openModal,
+    closeModal,
     closeAllModals,
 } from './ui.js';
 import { initTheme, toggleTheme } from './theme.js';
@@ -48,6 +50,13 @@ const app = {
 };
 
 initTheme();
+
+// تسجيل Service Worker لتمكين العمل دون اتصال (يتطلب https أو localhost).
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed', err));
+    });
+}
 
 document.addEventListener('DOMContentLoaded', start);
 
@@ -161,10 +170,10 @@ function bindEvents() {
 
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) overlay.classList.remove('show');
+            if (e.target === overlay) closeModal(overlay.id);
         });
         overlay.querySelectorAll('[data-close-modal]').forEach(btn => {
-            btn.addEventListener('click', () => overlay.classList.remove('show'));
+            btn.addEventListener('click', () => closeModal(overlay.id));
         });
     });
 
@@ -179,13 +188,24 @@ function bindEvents() {
         if (btn) filterByCategory(btn.dataset.category);
     });
 
-    document.getElementById('articlesContainer').addEventListener('click', (e) => {
+    // يشغّل المعالج نفسه بالنقر وبمفتاحي Enter/مسافة (إتاحة الوصول).
+    const bindActivate = (containerId, handler) => {
+        const container = document.getElementById(containerId);
+        container.addEventListener('click', handler);
+        container.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            handler(e);
+        });
+    };
+
+    bindActivate('articlesContainer', (e) => {
         if (e.target.closest('[data-no-toggle]')) return;
         const item = e.target.closest('.article-item');
         if (item) toggleArticleSelection(item.dataset.id);
     });
 
-    document.getElementById('templatesGrid').addEventListener('click', (e) => {
+    bindActivate('templatesGrid', (e) => {
         const card = e.target.closest('.template-card');
         if (card) useTemplate(Number(card.dataset.id));
     });
@@ -201,6 +221,48 @@ function bindEvents() {
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
+
+    document.getElementById('exportArchiveBtn').addEventListener('click', exportArchive);
+    document.getElementById('importArchiveBtn').addEventListener('click', () => {
+        document.getElementById('archiveImportFile').click();
+    });
+    document.getElementById('archiveImportFile').addEventListener('change', importArchive);
+}
+
+function exportArchive() {
+    if (app.savedResponses.length === 0) {
+        showToast('لا توجد ردود للتصدير');
+        return;
+    }
+    const blob = new Blob([JSON.stringify(app.savedResponses, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `responses-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('تم تصدير الأرشيف');
+}
+
+async function importArchive(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+        const parsed = JSON.parse(await file.text());
+        const added = importResponses(parsed);
+        if (added === -1) throw new Error('not-array');
+        if (added === null) {
+            showToast('تعذّر الاستيراد: امتلأت مساحة التخزين المحلية');
+        } else {
+            app.savedResponses = loadSavedResponses();
+            renderSavedResponses(app.savedResponses, document.getElementById('savedSearch').value);
+            refreshStats();
+            showToast(added > 0 ? `تمت إضافة ${added} رد إلى الأرشيف` : 'لا توجد ردود جديدة في الملف');
+        }
+    } catch {
+        showToast('ملف غير صالح');
+    }
+    e.target.value = '';
 }
 
 function analyzeMessage() {
@@ -237,7 +299,10 @@ function toggleArticleSelection(id) {
     if (idx > -1) app.selectedArticleIds.splice(idx, 1);
     else app.selectedArticleIds.push(id);
     const element = document.querySelector(`.article-item[data-id="${CSS.escape(id)}"]`);
-    if (element) element.classList.toggle('selected');
+    if (element) {
+        const selected = element.classList.toggle('selected');
+        element.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    }
 }
 
 function addSelectedArticleToOutput() {
@@ -375,14 +440,34 @@ function searchArticles() {
 function useTemplate(id) {
     const template = app.data.templates.find(t => t.id === id);
     if (!template) return;
-    setOutput(template.text);
+
+    // تعبئة رقم الطلب/الدعوى تلقائياً من آخر تحليل. التواريخ تُترك للموظف عمداً:
+    // تاريخ الرسالة الواردة ليس بالضرورة التاريخ المقصود في الرد الرسمي.
+    let text = template.text;
+    const ref = app.lastEntities.find(en => en.type === 'رقم طلب/مذكرة');
+    if (ref) {
+        text = text.replaceAll('[رقم الطلب]', ref.value).replaceAll('[رقم الدعوى]', ref.value);
+    }
+
+    setOutput(text);
     switchTab('write');
-    showToast('تم تحميل القالب (يمكنك تعديله)');
+
+    const placeholder = text.match(/\[[^\]]+\]/);
+    if (placeholder) {
+        const output = document.getElementById('finalOutput');
+        output.focus();
+        output.setSelectionRange(placeholder.index, placeholder.index + placeholder[0].length);
+        showToast('تم تحميل القالب — عبّئ الحقول الموضوعة بين أقواس [ ]');
+    } else {
+        showToast('تم تحميل القالب (يمكنك تعديله)');
+    }
 }
 
 function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tab);
+        const active = btn.dataset.tab === tab;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     document.getElementById('writeTab').classList.toggle('active', tab === 'write');
     document.getElementById('templatesTab').classList.toggle('active', tab === 'templates');

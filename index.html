@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مساعد الردود للمستفيدين | نظام المرافعات الشرعية</title>
     <meta name="description" content="أداة تساعد موظفي المحاكم على تحليل رسائل المستفيدين وصياغة ردود رسمية مستندة إلى اللوائح التنفيذية لنظام المرافعات الشرعية.">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta name="theme-color" content="#1a5f4a">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚖️</text></svg>">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icon.svg">
     <link rel="stylesheet" href="css/fonts.css">
     <link rel="stylesheet" href="css/themes.css">
     <link rel="stylesheet" href="css/styles.css">
@@ -40,9 +43,9 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <button class="icon-btn" id="themeToggle" title="تبديل الوضع">🌙</button>
-                    <button class="icon-btn" id="openAdminBtn" title="إدارة المواد">⚙️</button>
-                    <button class="icon-btn" id="openShortcutsBtn" title="الاختصارات">⌨️</button>
+                    <button class="icon-btn" id="themeToggle" title="تبديل الوضع" aria-label="تبديل الوضع الفاتح/الداكن">🌙</button>
+                    <button class="icon-btn" id="openAdminBtn" title="إدارة المواد" aria-label="إدارة المواد النظامية">⚙️</button>
+                    <button class="icon-btn" id="openShortcutsBtn" title="الاختصارات" aria-label="اختصارات لوحة المفاتيح">⌨️</button>
                 </div>
             </div>
         </div>
@@ -94,11 +97,11 @@
         <div class="card" id="writeCard">
             <div class="card-header"><span class="icon">✍️</span><h2>كتابة الرد</h2></div>
             <div class="card-body">
-                <div class="tabs">
-                    <button class="tab-btn active" data-tab="write">كتابة</button>
-                    <button class="tab-btn" data-tab="templates">قوالب جاهزة</button>
+                <div class="tabs" role="tablist" aria-label="طريقة كتابة الرد">
+                    <button class="tab-btn active" data-tab="write" role="tab" aria-selected="true" aria-controls="writeTab">كتابة</button>
+                    <button class="tab-btn" data-tab="templates" role="tab" aria-selected="false" aria-controls="templatesTab">قوالب جاهزة</button>
                 </div>
-                <div id="writeTab" class="tab-content active">
+                <div id="writeTab" class="tab-content active" role="tabpanel">
                     <div class="input-group">
                         <label for="userResponse">اكتب ردك هنا (يمكنك الكتابة بالعامية):</label>
                         <textarea id="userResponse" placeholder="مثال: اخوي تروح لموعد الجلسة اللي محدد لك وبتلاقي فيه كل التفاصيل..."></textarea>
@@ -108,7 +111,7 @@
                         <button class="btn btn-outline" id="addArticleBtn"><span>📎</span> إضافة مادة</button>
                     </div>
                 </div>
-                <div id="templatesTab" class="tab-content">
+                <div id="templatesTab" class="tab-content" role="tabpanel">
                     <div class="templates-grid" id="templatesGrid"></div>
                 </div>
             </div>
@@ -157,6 +160,11 @@
                     <span class="search-icon">🔍</span>
                     <input type="text" id="savedSearch" placeholder="ابحث في الردود المحفوظة...">
                 </div>
+                <div class="btn-group archive-actions">
+                    <button class="btn btn-outline" id="exportArchiveBtn"><span>📤</span> تصدير الأرشيف</button>
+                    <button class="btn btn-outline" id="importArchiveBtn"><span>📥</span> استيراد أرشيف</button>
+                    <input type="file" id="archiveImportFile" accept="application/json" hidden>
+                </div>
                 <div class="saved-list" id="savedList">
                     <div class="empty-state">
                         <div class="icon">📭</div>
@@ -169,10 +177,10 @@
 
     <!-- Modal: إدارة المواد -->
     <div class="modal-overlay" id="adminModal">
-        <div class="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
             <div class="modal-header">
-                <h2>⚙️ إدارة المواد النظامية</h2>
-                <button class="modal-close" data-close-modal>✕</button>
+                <h2 id="adminModalTitle">⚙️ إدارة المواد النظامية</h2>
+                <button class="modal-close" data-close-modal aria-label="إغلاق النافذة">✕</button>
             </div>
             <div class="modal-body">
                 <div class="form-row">
@@ -225,10 +233,10 @@
 
     <!-- Modal: الاختصارات -->
     <div class="modal-overlay" id="shortcutsModal">
-        <div class="modal modal-sm">
+        <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="shortcutsModalTitle">
             <div class="modal-header">
-                <h2>⌨️ اختصارات لوحة المفاتيح</h2>
-                <button class="modal-close" data-close-modal>✕</button>
+                <h2 id="shortcutsModalTitle">⌨️ اختصارات لوحة المفاتيح</h2>
+                <button class="modal-close" data-close-modal aria-label="إغلاق النافذة">✕</button>
             </div>
             <div class="modal-body">
                 <div class="shortcuts-list" id="shortcutsList"></div>
@@ -239,7 +247,7 @@
         </div>
     </div>
 
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <div class="print-footer">صدر عبر مساعد الردود للمستفيدين</div>
 
