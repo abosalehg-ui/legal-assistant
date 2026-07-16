@@ -1,0 +1,20 @@
+{
+  "name": "مساعد الردود للمستفيدين",
+  "short_name": "مساعد الردود",
+  "description": "أداة تساعد موظفي المحاكم على تحليل رسائل المستفيدين وصياغة ردود رسمية مستندة إلى اللوائح التنفيذية لنظام المرافعات الشرعية.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f8f6f1",
+  "theme_color": "#1a5f4a",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

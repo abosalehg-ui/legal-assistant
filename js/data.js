@@ -55,12 +55,35 @@ export function isSafeUrl(url) {
     }
 }
 
+// تحقق نوعي موحد للمادة (النموذج والاستيراد): تعيد نسخة نظيفة أو null.
+export function validateArticle(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    const asText = v => (typeof v === 'string' ? v.trim() : '');
+    const id = asText(raw.id);
+    const number = asText(raw.number);
+    const title = asText(raw.title);
+    const category = asText(raw.category);
+    const text = asText(raw.text);
+    if (!id || !number || !title || !category || !text) return null;
+
+    const keywords = Array.isArray(raw.keywords)
+        ? raw.keywords.map(asText).filter(Boolean)
+        : [];
+    const sourceUrl = isSafeUrl(asText(raw.sourceUrl)) ? asText(raw.sourceUrl) : '';
+
+    const article = { id, number, title, category, keywords, sourceUrl, text };
+    const lastVerified = asText(raw.lastVerified);
+    if (lastVerified) article.lastVerified = lastVerified;
+    return article;
+}
+
 export function resetCustomArticles() {
     localStorage.removeItem(STORAGE_KEYS.customArticles);
     localStorage.removeItem(STORAGE_KEYS.deletedArticles);
 }
 
-function mergeArticles(base, custom, deletedIds) {
+export function mergeArticles(base, custom, deletedIds) {
     const map = new Map();
     base.forEach(a => map.set(a.id, a));
     custom.forEach(a => map.set(a.id, a));
@@ -87,6 +110,7 @@ export async function loadData() {
         deletedIds,
         templates,
         intentPatterns: intents.patterns,
+        defaultResponse: intents.defaultResponse || '',
         toneIndicators: intents.toneIndicators,
         synonymsMap: intents.synonyms,
         language,

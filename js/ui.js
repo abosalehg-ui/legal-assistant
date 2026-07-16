@@ -19,18 +19,62 @@ export function showToast(message) {
     showToast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
+// حبس التركيز داخل النافذة المفتوحة واستعادته عند الإغلاق (إتاحة الوصول).
+let lastFocusedElement = null;
+
+function getFocusable(overlay) {
+    return Array.from(
+        overlay.querySelectorAll('button, [href], input:not([hidden]), textarea, select'),
+    ).filter(el => el.offsetParent !== null);
+}
+
+function handleModalKeydown(e) {
+    if (e.key !== 'Tab') return;
+    const focusables = getFocusable(e.currentTarget);
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+    }
+}
+
 export function openModal(id) {
     const overlay = document.getElementById(id);
-    if (overlay) overlay.classList.add('show');
+    if (!overlay) return;
+    lastFocusedElement = document.activeElement;
+    overlay.classList.add('show');
+    overlay.addEventListener('keydown', handleModalKeydown);
+    const focusables = getFocusable(overlay);
+    if (focusables.length > 0) focusables[0].focus();
+}
+
+function restoreFocus() {
+    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+        lastFocusedElement.focus();
+    }
+    lastFocusedElement = null;
 }
 
 export function closeModal(id) {
     const overlay = document.getElementById(id);
-    if (overlay) overlay.classList.remove('show');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    overlay.removeEventListener('keydown', handleModalKeydown);
+    restoreFocus();
 }
 
 export function closeAllModals() {
-    document.querySelectorAll('.modal-overlay.show').forEach(m => m.classList.remove('show'));
+    const open = document.querySelectorAll('.modal-overlay.show');
+    open.forEach(m => {
+        m.classList.remove('show');
+        m.removeEventListener('keydown', handleModalKeydown);
+    });
+    if (open.length > 0) restoreFocus();
 }
 
 const TONE_LABELS = {
@@ -47,13 +91,13 @@ export function renderAnalysis(analysis) {
 
     let html = '';
     html += `<div class="analysis-item"><strong>نبرة الرسالة:</strong> <span class="tag ${toneInfo.class}">${escapeHtml(toneInfo.label)}</span>`;
-    if (analysis.tone.urgent) html += ' <span class="tag" style="background:#e67e22;">⚡ عاجل</span>';
+    if (analysis.tone.urgent) html += ' <span class="tag urgent">⚡ عاجل</span>';
     html += '</div>';
 
     if (analysis.detectedIntents.length > 0) {
         html += '<div class="analysis-item"><strong>الموضوع الرئيسي:</strong><div class="tag-list">';
         analysis.detectedIntents.forEach(i => {
-            html += `<span class="tag intent">${escapeHtml(i.intent)}</span>`;
+            html += `<span class="tag intent">${escapeHtml(i.label)}</span>`;
         });
         html += '</div></div>';
     }
@@ -98,7 +142,7 @@ export function renderArticles(articles, selectedIds) {
             ? article.text.substring(0, 150) + '...'
             : article.text;
         return `
-        <div class="article-item ${isSelected}" data-id="${escapeHtml(article.id)}">
+        <div class="article-item ${isSelected}" data-id="${escapeHtml(article.id)}" role="button" tabindex="0" aria-pressed="${isSelected ? 'true' : 'false'}">
             <div>
                 <span class="article-number">${escapeHtml(article.number)}</span>
                 ${scoreTag}
@@ -114,7 +158,7 @@ export function renderArticles(articles, selectedIds) {
 export function renderTemplates(templates) {
     const grid = document.getElementById('templatesGrid');
     grid.innerHTML = templates.map(template =>
-        `<div class="template-card" data-id="${template.id}">
+        `<div class="template-card" data-id="${template.id}" role="button" tabindex="0">
             <div class="template-icon">${escapeHtml(template.icon)}</div>
             <div class="template-name">${escapeHtml(template.name)}</div>
         </div>`,
@@ -148,7 +192,7 @@ export function renderSavedResponses(savedResponses, searchQuery = '') {
                 <button data-action="load" data-id="${response.id}" title="تحميل">📂</button>
                 <button data-action="delete" data-id="${response.id}" title="حذف">🗑️</button>
             </div>
-            <div class="saved-item-preview">${escapeHtml(response.preview)}...</div>
+            <div class="saved-item-preview">${escapeHtml(response.preview)}${response.text.length > response.preview.length ? '…' : ''}</div>
             <div class="saved-item-date">${escapeHtml(response.date)}</div>
         </div>`,
     ).join('');

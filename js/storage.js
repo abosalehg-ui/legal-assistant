@@ -2,6 +2,9 @@
 
 const KEY = 'savedResponses';
 
+// حد أقصى للأرشيف يمنع النمو غير المحدود وامتلاء مساحة التخزين.
+export const MAX_SAVED = 500;
+
 export function loadSavedResponses() {
     try {
         return JSON.parse(localStorage.getItem(KEY) || '[]');
@@ -32,6 +35,7 @@ export function addResponse(text, category = null) {
         preview: text.substring(0, 100),
     };
     list.unshift(item);
+    if (list.length > MAX_SAVED) list.length = MAX_SAVED;
     return persist(list) ? item : null;
 }
 
@@ -43,6 +47,36 @@ export function deleteResponse(id) {
 
 export function findResponse(id) {
     return loadSavedResponses().find(r => r.id === id);
+}
+
+// يدمج أرشيفاً مستورداً مع الحالي (تجاهل المعرفات الموجودة).
+// يعيد عدد المضاف، أو null عند فشل الكتابة، أو -1 إن لم يكن الملف مصفوفة.
+export function importResponses(items) {
+    if (!Array.isArray(items)) return -1;
+    const list = loadSavedResponses();
+    const seen = new Set(list.map(r => r.id));
+    let added = 0;
+
+    for (const raw of items) {
+        if (!raw || typeof raw !== 'object') continue;
+        if (typeof raw.text !== 'string' || !raw.text.trim()) continue;
+        const id = typeof raw.id === 'number' ? raw.id : Date.now() + added;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        list.push({
+            id,
+            text: raw.text,
+            category: typeof raw.category === 'string' ? raw.category : null,
+            date: typeof raw.date === 'string' ? raw.date : '',
+            timestamp: typeof raw.timestamp === 'number' ? raw.timestamp : id,
+            preview: raw.text.substring(0, 100),
+        });
+        added++;
+    }
+
+    list.sort((a, b) => (b.timestamp || b.id || 0) - (a.timestamp || a.id || 0));
+    if (list.length > MAX_SAVED) list.length = MAX_SAVED;
+    return persist(list) ? added : null;
 }
 
 export function computeStats(savedResponses) {

@@ -20,6 +20,7 @@ import {
     addResponse,
     deleteResponse,
     findResponse,
+    importResponses,
     computeStats,
 } from './storage.js';
 import {
@@ -31,6 +32,7 @@ import {
     renderSavedResponses,
     renderStats,
     openModal,
+    closeModal,
     closeAllModals,
 } from './ui.js';
 import { initTheme, toggleTheme } from './theme.js';
@@ -43,11 +45,30 @@ const app = {
     savedResponses: [],
     currentFilter: 'all',
     lastAnalysisIntent: null,
+    lastEntities: [],
+    outputBackup: null,
 };
 
 initTheme();
 
+// تسجيل Service Worker لتمكين العمل دون اتصال (يتطلب https أو localhost).
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed', err));
+    });
+}
+
 document.addEventListener('DOMContentLoaded', start);
+
+function showLoadError() {
+    const box = document.getElementById('loadErrorCard');
+    if (!box) return;
+    box.classList.add('show');
+    document.getElementById('retryLoadBtn')?.addEventListener('click', () => {
+        box.classList.remove('show');
+        start();
+    }, { once: true });
+}
 
 async function start() {
     try {
@@ -55,6 +76,7 @@ async function start() {
     } catch (err) {
         console.error(err);
         showToast('تعذّر تحميل بيانات التطبيق');
+        showLoadError();
         return;
     }
     app.savedResponses = loadSavedResponses();
@@ -74,7 +96,12 @@ async function start() {
         renderCategoryFilter(uniqueCategories());
         refreshStats();
         if (app.currentFilter !== 'all') {
-            filterByCategory(app.currentFilter);
+            // إذا حُذفت الفئة المفلترة نعود إلى «الكل» بدل فلتر يشير لفئة غير موجودة.
+            if (!uniqueCategories().includes(app.currentFilter)) {
+                filterByCategory('all');
+            } else {
+                filterByCategory(app.currentFilter);
+            }
         }
     });
 
@@ -100,8 +127,35 @@ function refreshStats() {
     renderStats(stats, app.data.articles.length);
 }
 
+// يستبدل الرد النهائي مع حفظ نسخة للتراجع إن كان هناك نص سيُفقد.
+function setOutput(newValue) {
+    const output = document.getElementById('finalOutput');
+    const current = output.value;
+    if (current.trim() && current !== newValue) {
+        app.outputBackup = current;
+        document.getElementById('undoOutputBtn')?.classList.remove('hidden');
+    }
+    output.value = newValue;
+}
+
+function undoOutput() {
+    if (app.outputBackup === null) {
+        showToast('لا يوجد ما يُتراجع عنه');
+        return;
+    }
+    const output = document.getElementById('finalOutput');
+    const current = output.value;
+    output.value = app.outputBackup;
+    app.outputBackup = current.trim() ? current : null;
+    if (app.outputBackup === null) {
+        document.getElementById('undoOutputBtn')?.classList.add('hidden');
+    }
+    showToast('تم التراجع');
+}
+
 function bindEvents() {
     document.getElementById('analyzeBtn').addEventListener('click', analyzeMessage);
+    document.getElementById('undoOutputBtn')?.addEventListener('click', undoOutput);
     document.getElementById('clearInputBtn').addEventListener('click', clearInput);
     document.getElementById('improveBtn').addEventListener('click', handleImprove);
     document.getElementById('addArticleBtn').addEventListener('click', addSelectedArticleToOutput);
@@ -116,10 +170,10 @@ function bindEvents() {
 
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) overlay.classList.remove('show');
+            if (e.target === overlay) closeModal(overlay.id);
         });
         overlay.querySelectorAll('[data-close-modal]').forEach(btn => {
-            btn.addEventListener('click', () => overlay.classList.remove('show'));
+            btn.addEventListener('click', () => closeModal(overlay.id));
         });
     });
 
@@ -134,13 +188,24 @@ function bindEvents() {
         if (btn) filterByCategory(btn.dataset.category);
     });
 
-    document.getElementById('articlesContainer').addEventListener('click', (e) => {
+    // يشغّل المعالج نفسه بالنقر وبمفتاحي Enter/مسافة (إتاحة الوصول).
+    const bindActivate = (containerId, handler) => {
+        const container = document.getElementById(containerId);
+        container.addEventListener('click', handler);
+        container.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            handler(e);
+        });
+    };
+
+    bindActivate('articlesContainer', (e) => {
         if (e.target.closest('[data-no-toggle]')) return;
         const item = e.target.closest('.article-item');
         if (item) toggleArticleSelection(item.dataset.id);
     });
 
-    document.getElementById('templatesGrid').addEventListener('click', (e) => {
+    bindActivate('templatesGrid', (e) => {
         const card = e.target.closest('.template-card');
         if (card) useTemplate(Number(card.dataset.id));
     });
@@ -156,6 +221,48 @@ function bindEvents() {
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
+
+    document.getElementById('exportArchiveBtn').addEventListener('click', exportArchive);
+    document.getElementById('importArchiveBtn').addEventListener('click', () => {
+        document.getElementById('archiveImportFile').click();
+    });
+    document.getElementById('archiveImportFile').addEventListener('change', importArchive);
+}
+
+function exportArchive() {
+    if (app.savedResponses.length === 0) {
+        showToast('لا توجد ردود للتصدير');
+        return;
+    }
+    const blob = new Blob([JSON.stringify(app.savedResponses, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `responses-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('تم تصدير الأرشيف');
+}
+
+async function importArchive(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+        const parsed = JSON.parse(await file.text());
+        const added = importResponses(parsed);
+        if (added === -1) throw new Error('not-array');
+        if (added === null) {
+            showToast('تعذّر الاستيراد: امتلأت مساحة التخزين المحلية');
+        } else {
+            app.savedResponses = loadSavedResponses();
+            renderSavedResponses(app.savedResponses, document.getElementById('savedSearch').value);
+            refreshStats();
+            showToast(added > 0 ? `تمت إضافة ${added} رد إلى الأرشيف` : 'لا توجد ردود جديدة في الملف');
+        }
+    } catch {
+        showToast('ملف غير صالح');
+    }
+    e.target.value = '';
 }
 
 function analyzeMessage() {
@@ -176,9 +283,13 @@ function analyzeMessage() {
     renderArticles(relevantArticles, app.selectedArticleIds);
 
     app.lastAnalysisIntent = detectedIntents[0] || null;
+    app.lastEntities = entities;
 
-    const response = suggestResponse(message, relevantArticles, detectedIntents, entities, app.data.language);
-    document.getElementById('finalOutput').value = response;
+    const response = suggestResponse(
+        message, relevantArticles, detectedIntents, entities,
+        app.data.language, app.data.defaultResponse,
+    );
+    setOutput(response);
 
     showToast(`تم العثور على ${relevantArticles.length} مادة ذات صلة`);
 }
@@ -188,7 +299,10 @@ function toggleArticleSelection(id) {
     if (idx > -1) app.selectedArticleIds.splice(idx, 1);
     else app.selectedArticleIds.push(id);
     const element = document.querySelector(`.article-item[data-id="${CSS.escape(id)}"]`);
-    if (element) element.classList.toggle('selected');
+    if (element) {
+        const selected = element.classList.toggle('selected');
+        element.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    }
 }
 
 function addSelectedArticleToOutput() {
@@ -214,7 +328,7 @@ function handleImprove() {
         showToast('يرجى كتابة الرد أولاً');
         return;
     }
-    document.getElementById('finalOutput').value = improveLanguage(input, app.data.language);
+    setOutput(improveLanguage(input, app.data.language));
     showToast('تم تحسين الصياغة بنجاح');
 }
 
@@ -242,7 +356,7 @@ function handleSave() {
         showToast('لا يوجد رد للحفظ');
         return;
     }
-    const category = app.lastAnalysisIntent ? app.lastAnalysisIntent.intent : null;
+    const category = app.lastAnalysisIntent ? app.lastAnalysisIntent.label : null;
     if (!addResponse(output, category)) {
         showToast('تعذّر الحفظ: امتلأت مساحة التخزين، احذف بعض الردود القديمة');
         return;
@@ -282,7 +396,7 @@ function clearInput() {
 function loadSavedResponseToOutput(id) {
     const response = findResponse(id);
     if (response) {
-        document.getElementById('finalOutput').value = response.text;
+        setOutput(response.text);
         showToast('تم تحميل الرد');
     }
 }
@@ -326,14 +440,34 @@ function searchArticles() {
 function useTemplate(id) {
     const template = app.data.templates.find(t => t.id === id);
     if (!template) return;
-    document.getElementById('finalOutput').value = template.text;
+
+    // تعبئة رقم الطلب/الدعوى تلقائياً من آخر تحليل. التواريخ تُترك للموظف عمداً:
+    // تاريخ الرسالة الواردة ليس بالضرورة التاريخ المقصود في الرد الرسمي.
+    let text = template.text;
+    const ref = app.lastEntities.find(en => en.type === 'رقم طلب/مذكرة');
+    if (ref) {
+        text = text.replaceAll('[رقم الطلب]', ref.value).replaceAll('[رقم الدعوى]', ref.value);
+    }
+
+    setOutput(text);
     switchTab('write');
-    showToast('تم تحميل القالب (يمكنك تعديله)');
+
+    const placeholder = text.match(/\[[^\]]+\]/);
+    if (placeholder) {
+        const output = document.getElementById('finalOutput');
+        output.focus();
+        output.setSelectionRange(placeholder.index, placeholder.index + placeholder[0].length);
+        showToast('تم تحميل القالب — عبّئ الحقول الموضوعة بين أقواس [ ]');
+    } else {
+        showToast('تم تحميل القالب (يمكنك تعديله)');
+    }
 }
 
 function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tab);
+        const active = btn.dataset.tab === tab;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     document.getElementById('writeTab').classList.toggle('active', tab === 'write');
     document.getElementById('templatesTab').classList.toggle('active', tab === 'templates');
