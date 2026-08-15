@@ -15,7 +15,8 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/print.css">
 </head>
-<body>
+<body class="app-loading">
+    <div class="loading-bar" aria-hidden="true"></div>
     <div class="print-header">
         <div class="title">⚖️ مساعد الردود للمستفيدين</div>
         <div class="subtitle">اللوائح التنفيذية لنظام المرافعات الشرعية</div>
@@ -51,7 +52,7 @@
         </div>
     </header>
 
-    <main class="main-container">
+    <main class="main-container" id="mainContainer" aria-busy="true">
         <div class="load-error full-width" id="loadErrorCard">
             <div class="icon">⚠️</div>
             <p>تعذّر تحميل بيانات التطبيق. تأكد من اتصالك ثم أعد المحاولة.</p>
@@ -79,8 +80,8 @@
             <div class="card-header"><span class="icon">📚</span><h2>المواد النظامية ذات الصلة</h2></div>
             <div class="card-body">
                 <div class="search-box">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" id="articleSearch" placeholder="ابحث في المواد...">
+                    <span class="search-icon" aria-hidden="true">🔍</span>
+                    <input type="text" id="articleSearch" placeholder="ابحث في المواد..." aria-label="البحث في المواد النظامية">
                 </div>
                 <div class="category-filter" id="categoryFilter">
                     <button class="category-btn active" data-category="all">الكل</button>
@@ -112,19 +113,23 @@
                     </div>
                 </div>
                 <div id="templatesTab" class="tab-content" role="tabpanel">
-                    <div class="templates-grid" id="templatesGrid"></div>
+                    <div class="templates-grid" id="templatesGrid">
+                        <div class="template-card skeleton" aria-hidden="true"></div>
+                        <div class="template-card skeleton" aria-hidden="true"></div>
+                        <div class="template-card skeleton" aria-hidden="true"></div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="card" id="outputCard">
-            <div class="card-header"><span class="icon">📤</span><h2>الرد النهائي</h2></div>
+            <div class="card-header"><span class="icon">📤</span><h2 id="outputCardTitle">الرد النهائي</h2></div>
             <div class="card-body">
                 <div class="output-hint">
-                    <span>💡</span>
+                    <span aria-hidden="true">💡</span>
                     <span>يمكنك تعديل الرد مباشرة قبل النسخ أو الحفظ</span>
                 </div>
-                <textarea id="finalOutput" class="output-box" placeholder="سيظهر الرد المقترح هنا... ويمكنك التعديل عليه بحرية قبل النسخ أو الحفظ"></textarea>
+                <textarea id="finalOutput" class="output-box" aria-labelledby="outputCardTitle" placeholder="سيظهر الرد المقترح هنا... ويمكنك التعديل عليه بحرية قبل النسخ أو الحفظ"></textarea>
                 <div class="btn-group mt-1">
                     <button class="btn btn-primary" id="copyBtn"><span>📋</span> نسخ الرد</button>
                     <button class="btn btn-secondary" id="saveBtn"><span>💾</span> حفظ</button>
@@ -156,13 +161,31 @@
                         <div class="label">الأكثر تكراراً</div>
                     </div>
                 </div>
+                <div class="privacy-note" role="note">
+                    <span class="icon" aria-hidden="true">🔒</span>
+                    <p>
+                        تُحفظ الردود على <strong>هذا الجهاز فقط</strong> ولا تُرسل لأي خادم.
+                        وقد تحتوي على أرقام هوية وجوال للمستفيدين، لذلك تُحذف تلقائياً بعد المدة المحددة أدناه —
+                        <strong>صدّر الأرشيف</strong> إن كنت تحتاج الاحتفاظ به. تجنّب استخدام التطبيق على جهاز عام أو مشترك.
+                    </p>
+                </div>
                 <div class="search-box">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" id="savedSearch" placeholder="ابحث في الردود المحفوظة...">
+                    <span class="search-icon" aria-hidden="true">🔍</span>
+                    <input type="text" id="savedSearch" placeholder="ابحث في الردود المحفوظة..." aria-label="البحث في الردود المحفوظة">
+                </div>
+                <div class="retention-row">
+                    <label for="retentionSelect">مدة الاحتفاظ بالردود:</label>
+                    <select id="retentionSelect">
+                        <option value="7">٧ أيام</option>
+                        <option value="30">٣٠ يوماً</option>
+                        <option value="90">٩٠ يوماً</option>
+                        <option value="0">بلا حد</option>
+                    </select>
                 </div>
                 <div class="btn-group archive-actions">
-                    <button class="btn btn-outline" id="exportArchiveBtn"><span>📤</span> تصدير الأرشيف</button>
-                    <button class="btn btn-outline" id="importArchiveBtn"><span>📥</span> استيراد أرشيف</button>
+                    <button class="btn btn-outline" id="exportArchiveBtn"><span aria-hidden="true">📤</span> تصدير الأرشيف</button>
+                    <button class="btn btn-outline" id="importArchiveBtn"><span aria-hidden="true">📥</span> استيراد أرشيف</button>
+                    <button class="btn btn-danger" id="clearArchiveBtn"><span aria-hidden="true">🧹</span> مسح كل الأرشيف</button>
                     <input type="file" id="archiveImportFile" accept="application/json" hidden>
                 </div>
                 <div class="saved-list" id="savedList">
@@ -243,6 +266,22 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-close-modal>إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: تأكيد (بديل confirm() الأصلي) -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal modal-sm" role="alertdialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalMessage">
+            <div class="modal-header">
+                <h2 id="confirmModalTitle">تأكيد الإجراء</h2>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="confirmCancel">إلغاء</button>
+                <button class="btn btn-danger" id="confirmOk">تأكيد</button>
             </div>
         </div>
     </div>

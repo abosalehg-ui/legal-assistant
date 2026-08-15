@@ -1,34 +1,28 @@
 // شاشة إدارة المواد النظامية + تصدير/استيراد.
 
-import { escapeHtml, showToast } from './ui.js';
+import { escapeHtml, showToast, downloadJson, confirmDialog } from './ui.js';
+import { isSafeUrl, validateArticle, toPlainArticle } from './data.js';
 import {
-    saveCustomArticles,
-    saveDeletedArticleIds,
-    resetCustomArticles,
-    isSafeUrl,
-    mergeArticles,
-    validateArticle,
-} from './data.js';
+    getArticles,
+    findArticle,
+    upsertArticle,
+    removeArticle,
+    replaceCustomArticles,
+    resetArticles,
+    subscribe,
+} from './store.js';
 
-let state = null;
+// حد لحجم الملف المستورد: file.text() + JSON.parse على ملف ضخم يجمّد الواجهة تماماً.
+export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 
-export function initAdmin(dataState, onChange) {
-    state = { ...dataState, onChange };
+export function initAdmin() {
     renderAdminList();
     bindAdminEvents();
-}
-
-export function setAdminState(dataState) {
-    if (!state) return;
-    state.baseArticles = dataState.baseArticles;
-    state.customArticles = dataState.customArticles;
-    state.deletedIds = dataState.deletedIds;
-    state.articles = dataState.articles;
-    renderAdminList();
+    subscribe(renderAdminList);
 }
 
 function getCurrentList() {
-    return state.articles.slice().sort((a, b) => a.number.localeCompare(b.number, 'ar'));
+    return getArticles().slice().sort((a, b) => a.number.localeCompare(b.number, 'ar'));
 }
 
 function renderAdminList() {
@@ -48,49 +42,11 @@ function renderAdminList() {
                 <div class="item-meta">${escapeHtml(a.category)}${a.sourceUrl ? ' · 🔗' : ''}</div>
             </div>
             <div class="actions">
-                <button data-action="edit" title="تعديل">✏️</button>
-                <button data-action="delete" title="حذف">🗑️</button>
+                <button data-action="edit" title="تعديل" aria-label="تعديل المادة">✏️</button>
+                <button data-action="delete" title="حذف" aria-label="حذف المادة">🗑️</button>
             </div>
         </div>
     `).join('');
-}
-
-function findArticle(id) {
-    return state.articles.find(a => a.id === id);
-}
-
-function upsertCustom(article) {
-    const list = state.customArticles.filter(a => a.id !== article.id);
-    list.push(article);
-    state.customArticles = list;
-    const saved = saveCustomArticles(list);
-
-    state.deletedIds = state.deletedIds.filter(id => id !== article.id);
-    saveDeletedArticleIds(state.deletedIds);
-
-    rebuildMerged();
-    state.onChange(state);
-    return saved;
-}
-
-function deleteArticle(id) {
-    const isBase = state.baseArticles.some(a => a.id === id);
-
-    state.customArticles = state.customArticles.filter(a => a.id !== id);
-    let saved = saveCustomArticles(state.customArticles);
-
-    if (isBase && !state.deletedIds.includes(id)) {
-        state.deletedIds.push(id);
-        saved = saveDeletedArticleIds(state.deletedIds) && saved;
-    }
-
-    rebuildMerged();
-    state.onChange(state);
-    if (!saved) showToast('تعذّر حفظ التغيير: امتلأت مساحة التخزين المحلية');
-}
-
-function rebuildMerged() {
-    state.articles = mergeArticles(state.baseArticles, state.customArticles, state.deletedIds);
 }
 
 function clearForm() {
@@ -137,10 +93,24 @@ function readForm() {
     return article;
 }
 
+// يتحقق من الحجم ويقرأ الملف كـ JSON. يعيد null بعد إظهار السبب للمستخدم.
+async function readJsonFile(file) {
+    if (file.size > MAX_IMPORT_BYTES) {
+        showToast('الملف أكبر من ٥ ميجابايت — تعذّر الاستيراد');
+        return null;
+    }
+    try {
+        return JSON.parse(await file.text());
+    } catch {
+        showToast('ملف غير صالح');
+        return null;
+    }
+}
+
 function bindAdminEvents() {
     const adminList = document.getElementById('adminList');
     if (adminList) {
-        adminList.addEventListener('click', (e) => {
+        adminList.addEventListener('click', async (e) => {
             const item = e.target.closest('.admin-list-item');
             if (!item) return;
             const id = item.dataset.id;
@@ -149,8 +119,13 @@ function bindAdminEvents() {
                 const article = findArticle(id);
                 if (article) loadForm(article);
             } else if (action === 'delete') {
-                if (confirm('هل أنت متأكد من حذف هذه المادة؟ يمكن استعادتها بالضغط على "إعادة تعيين".')) {
-                    deleteArticle(id);
+                const ok = await confirmDialog(
+                    'هل أنت متأكد من حذف هذه المادة؟ يمكن استعادتها بالضغط على «إعادة تعيين».',
+                    { confirmLabel: 'حذف' },
+                );
+                if (!ok) return;
+                if (!removeArticle(id)) {
+                    showToast('تعذّر حفظ التغيير: امتلأت مساحة التخزين المحلية');
                 }
             }
         });
@@ -159,7 +134,7 @@ function bindAdminEvents() {
     document.getElementById('adminSave')?.addEventListener('click', () => {
         const article = readForm();
         if (!article) return;
-        if (!upsertCustom(article)) {
+        if (!upsertArticle(article)) {
             showToast('تعذّر الحفظ: امتلأت مساحة التخزين المحلية');
             return;
         }
@@ -169,24 +144,18 @@ function bindAdminEvents() {
 
     document.getElementById('adminClear')?.addEventListener('click', clearForm);
 
-    document.getElementById('adminReset')?.addEventListener('click', () => {
-        if (!confirm('سيتم إلغاء كل التعديلات المحلية والعودة للمواد الأساسية. هل أنت متأكد؟')) return;
-        resetCustomArticles();
-        state.customArticles = [];
-        state.deletedIds = [];
-        rebuildMerged();
-        state.onChange(state);
+    document.getElementById('adminReset')?.addEventListener('click', async () => {
+        const ok = await confirmDialog(
+            'سيتم إلغاء كل التعديلات المحلية والعودة للمواد الأساسية. هل أنت متأكد؟',
+            { confirmLabel: 'إعادة تعيين' },
+        );
+        if (!ok) return;
+        resetArticles();
         showToast('تم إعادة التعيين');
     });
 
     document.getElementById('adminExport')?.addEventListener('click', () => {
-        const blob = new Blob([JSON.stringify(state.articles, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `articles-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadJson(getArticles().map(toPlainArticle), 'articles');
         showToast('تم تصدير المواد');
     });
 
@@ -197,34 +166,38 @@ function bindAdminEvents() {
     document.getElementById('adminImportFile')?.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (!confirm('سيستبدل الاستيراد كل المواد المخصصة الحالية ويعيد المواد المحذوفة سابقاً. هل أنت متأكد؟')) {
+        const ok = await confirmDialog(
+            'سيستبدل الاستيراد كل المواد المخصصة الحالية ويعيد المواد المحذوفة سابقاً. هل أنت متأكد؟',
+            { confirmLabel: 'استيراد' },
+        );
+        if (!ok) {
             e.target.value = '';
             return;
         }
-        try {
-            const text = await file.text();
-            const parsed = JSON.parse(text);
-            if (!Array.isArray(parsed)) throw new Error('not-array');
 
-            const valid = parsed.map(validateArticle).filter(Boolean);
-            const rejected = parsed.length - valid.length;
-
-            if (!saveCustomArticles(valid)) {
-                showToast('تعذّر الاستيراد: امتلأت مساحة التخزين المحلية');
-                e.target.value = '';
-                return;
-            }
-            state.customArticles = valid;
-            state.deletedIds = [];
-            saveDeletedArticleIds([]);
-            rebuildMerged();
-            state.onChange(state);
-            showToast(rejected > 0
-                ? `تم استيراد ${valid.length} مادة (رُفضت ${rejected} لعدم اكتمال بياناتها)`
-                : `تم استيراد ${valid.length} مادة`);
-        } catch {
-            showToast('ملف غير صالح');
+        const parsed = await readJsonFile(file);
+        if (parsed === null) {
+            e.target.value = '';
+            return;
         }
+        if (!Array.isArray(parsed)) {
+            showToast('ملف غير صالح');
+            e.target.value = '';
+            return;
+        }
+
+        const valid = parsed.map(validateArticle).filter(Boolean);
+        const rejected = parsed.length - valid.length;
+
+        if (!replaceCustomArticles(valid)) {
+            showToast('تعذّر الاستيراد: امتلأت مساحة التخزين المحلية');
+            e.target.value = '';
+            return;
+        }
+
+        showToast(rejected > 0
+            ? `تم استيراد ${valid.length} مادة (رُفضت ${rejected} لعدم اكتمال بياناتها)`
+            : `تم استيراد ${valid.length} مادة`);
         e.target.value = '';
     });
 }

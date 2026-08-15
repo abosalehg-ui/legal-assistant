@@ -10,9 +10,14 @@
     --bg-subtle: #f8f9fa;
     --text-primary: #2c2c2c;
     --text-secondary: #5a5a5a;
-    --text-light: #8a8a8a;
+    /* كان #8a8a8a وتباينه 3.28:1 على خلفية البطاقة — دون حد WCAG AA (4.5:1).
+       #6b6b6b يرفعه إلى ~5.3:1 مع بقائه ثانوياً بصرياً. */
+    --text-light: #6b6b6b;
     --text-on-primary: #ffffff;
     --border: #e0ddd5;
+    --warning-bg: #fdf3d7;
+    --warning-border: #e0c068;
+    --warning-text: #7a5901;
     --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
     --radius: 12px;
@@ -38,9 +43,12 @@
     --bg-subtle: #262b2f;
     --text-primary: #e8e8e8;
     --text-secondary: #b8b8b8;
-    --text-light: #888888;
+    --text-light: #9a9a9a;
     --text-on-primary: #ffffff;
     --border: #3a4046;
+    --warning-bg: #3a3016;
+    --warning-border: #7a6320;
+    --warning-text: #e8c96a;
     --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
     --focus-ring: 0 0 0 4px rgba(45, 139, 110, 0.25);

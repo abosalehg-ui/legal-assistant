@@ -27,19 +27,50 @@ function escapeRegExp(text) {
     return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const ARABIC_LETTER = '\\u0621-\\u064A';
+
+// تعبير واحد بتبادل بدل تعبير لكل مدخل. فائدتان:
+//  1) تمريرة واحدة على النص، فلا يمكن لمخرج استبدال مبكر أن يطابقه مفتاح لاحق (تسلسل).
+//  2) التعبيرات تُبنى مرة واحدة لكل قاموس بدل ~359 كائن RegExp في كل نقرة.
+// الترتيب تنازلياً بالطول ضروري: التبادل يختار أول بديل يطابق، فالأطول يجب أن يُجرَّب أولاً.
+function buildMatcher(map, withPrefix) {
+    const keys = Object.keys(map).sort((a, b) => b.length - a.length);
+    if (keys.length === 0) return null;
+    const prefix = withPrefix ? '([وفبلك]?)' : '()';
+    return new RegExp(
+        `(^|[^${ARABIC_LETTER}])${prefix}(${keys.map(escapeRegExp).join('|')})(?=[^${ARABIC_LETTER}]|$)`,
+        'g',
+    );
+}
+
+const matcherCache = new WeakMap();
+
+function getMatchers(language) {
+    let matchers = matcherCache.get(language);
+    if (!matchers) {
+        matchers = {
+            colloquial: buildMatcher(language.colloquialToFormal, true),
+            legalTerms: buildMatcher(language.legalTerms, false),
+        };
+        matcherCache.set(language, matchers);
+    }
+    return matchers;
+}
+
 export function improveLanguage(input, language) {
     let improved = input;
+    const { colloquial, legalTerms } = getMatchers(language);
 
-    const sortedColloquial = Object.entries(language.colloquialToFormal).sort((a, b) => b[0].length - a[0].length);
-    sortedColloquial.forEach(([colloquial, formal]) => {
-        const regex = new RegExp('(^|[^\\u0621-\\u064A])([وفبلك]?)' + escapeRegExp(colloquial) + '(?=[^\\u0621-\\u064A]|$)', 'g');
-        improved = improved.replace(regex, '$1$2' + formal);
-    });
+    // دالة استبدال بدل سلسلة '$1$2': تمنع تفسير أي '$' داخل النص الفصيح كمرجع مجموعة.
+    if (colloquial) {
+        improved = improved.replace(colloquial, (match, before, wordPrefix, word) =>
+            before + wordPrefix + language.colloquialToFormal[word]);
+    }
 
-    Object.entries(language.legalTerms).forEach(([term, legal]) => {
-        const regex = new RegExp('(^|[^\\u0621-\\u064A])' + escapeRegExp(term) + '(?=[^\\u0621-\\u064A]|$)', 'g');
-        improved = improved.replace(regex, '$1' + legal);
-    });
+    if (legalTerms) {
+        improved = improved.replace(legalTerms, (match, before, wordPrefix, word) =>
+            before + language.legalTerms[word]);
+    }
 
     if (!improved.includes('السلام عليكم')) {
         improved = language.openings[0] + '\n\n' + improved;

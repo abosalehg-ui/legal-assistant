@@ -1,48 +1,11 @@
-// تحميل بيانات JSON ودمج التعديلات المحلية على المواد.
+// تحميل ملفات JSON والتحقق النوعي للمواد وتجهيزها للبحث.
 
-const STORAGE_KEYS = {
-    customArticles: 'customArticles',
-    deletedArticles: 'deletedArticles',
-};
+import { normalizeArabic } from './analyzer.js';
 
 async function fetchJson(path) {
     const response = await fetch(path, { cache: 'no-cache' });
     if (!response.ok) throw new Error(`فشل تحميل ${path}`);
     return response.json();
-}
-
-function getCustomArticles() {
-    try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEYS.customArticles) || '[]');
-    } catch {
-        return [];
-    }
-}
-
-function getDeletedArticleIds() {
-    try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEYS.deletedArticles) || '[]');
-    } catch {
-        return [];
-    }
-}
-
-// تعيد false عند فشل الكتابة (مثل امتلاء مساحة التخزين) بدل رمي استثناء.
-function safeSetItem(key, value) {
-    try {
-        localStorage.setItem(key, value);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-export function saveCustomArticles(list) {
-    return safeSetItem(STORAGE_KEYS.customArticles, JSON.stringify(list));
-}
-
-export function saveDeletedArticleIds(ids) {
-    return safeSetItem(STORAGE_KEYS.deletedArticles, JSON.stringify(ids));
 }
 
 // يقبل روابط https فقط؛ يمنع أنظمة خطرة مثل javascript:
@@ -78,9 +41,32 @@ export function validateArticle(raw) {
     return article;
 }
 
-export function resetCustomArticles() {
-    localStorage.removeItem(STORAGE_KEYS.customArticles);
-    localStorage.removeItem(STORAGE_KEYS.deletedArticles);
+// نسخة نظيفة للتصدير: بلا الحقول الداخلية المطبّعة (_norm*) ولا درجة التطابق،
+// حتى يبقى الملف المصدَّر مطابقاً لبنية data/articles.json الأصلية.
+export function toPlainArticle(article) {
+    const plain = {
+        id: article.id,
+        number: article.number,
+        title: article.title,
+        category: article.category,
+        keywords: article.keywords || [],
+        sourceUrl: article.sourceUrl || '',
+        text: article.text,
+    };
+    if (article.lastVerified) plain.lastVerified = article.lastVerified;
+    return plain;
+}
+
+// تُحسب الحقول المطبّعة مرة واحدة عند التحميل بدل إعادة حسابها لكل كلمة مفتاحية في كل بحث.
+// كانت findRelevantArticles تطبّع نص كل مادة كاملاً مرة لكل كلمة مفتاحية (~880 عملية للتحليل الواحد).
+export function withNormalized(articles) {
+    return articles.map(article => ({
+        ...article,
+        _normTitle: normalizeArabic(article.title || ''),
+        _normText: normalizeArabic(article.text || ''),
+        _normNumber: normalizeArabic(article.number || ''),
+        _normKeywords: (article.keywords || []).map(normalizeArabic),
+    }));
 }
 
 export function mergeArticles(base, custom, deletedIds) {
@@ -99,15 +85,8 @@ export async function loadData() {
         fetchJson('data/colloquial-map.json'),
     ]);
 
-    const customArticles = getCustomArticles();
-    const deletedIds = getDeletedArticleIds();
-    const articles = mergeArticles(baseArticles, customArticles, deletedIds);
-
     return {
         baseArticles,
-        articles,
-        customArticles,
-        deletedIds,
         templates,
         intentPatterns: intents.patterns,
         defaultResponse: intents.defaultResponse || '',

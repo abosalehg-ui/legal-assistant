@@ -79,3 +79,51 @@ test('improveLanguage: يضيف الافتتاحية والخاتمة عند غ�
     assert.equal(out2.split('السلام عليكم').length - 1, 1);
     assert.ok(!out2.endsWith(language.closings[0]));
 });
+
+test('improveLanguage: يختار العبارة الأطول لا الأقصر عند التداخل', () => {
+    // التبادل يختار أول بديل مطابق، فالترتيب تنازلياً بالطول هو ما يضمن هذا السلوك.
+    const lang = {
+        colloquialToFormal: { 'يعطيك العافية': 'شكراً جزيلاً', 'يعطيك': 'يمنحك' },
+        legalTerms: {},
+        openings: ['السلام عليكم'],
+        closings: ['\n\nتقبلوا التقدير'],
+    };
+    const out = improveLanguage('يعطيك العافية على جهدك', lang);
+    assert.ok(out.includes('شكراً جزيلاً'));
+    assert.ok(!out.includes('يمنحك'));
+});
+
+test('improveLanguage: لا يعيد استبدال مخرج استبدال سابق (بلا تسلسل)', () => {
+    // في التمرير المتعدد القديم كان مخرج «أ» يمكن أن يطابقه مفتاح «ب» لاحقاً.
+    const lang = {
+        colloquialToFormal: { 'أول': 'ثاني', 'ثاني': 'ثالث' },
+        legalTerms: {},
+        openings: ['السلام عليكم'],
+        closings: ['\n\nتقبلوا التقدير'],
+    };
+    const out = improveLanguage('أول', lang);
+    assert.ok(out.includes('ثاني'));
+    assert.ok(!out.includes('ثالث'), 'تمريرة واحدة فقط');
+});
+
+test('improveLanguage: يتعامل مع $ في النص الفصيح كنص لا كمرجع مجموعة', () => {
+    const lang = {
+        colloquialToFormal: { 'مبلغ': 'قيمة $1 المطالبة' },
+        legalTerms: {},
+        openings: ['السلام عليكم'],
+        closings: ['\n\nتقبلوا التقدير'],
+    };
+    const out = improveLanguage('مبلغ', lang);
+    assert.ok(out.includes('قيمة $1 المطالبة'));
+});
+
+test('improveLanguage: قاموس فارغ لا يكسر الدالة', () => {
+    const lang = {
+        colloquialToFormal: {},
+        legalTerms: {},
+        openings: ['السلام عليكم'],
+        closings: ['\n\nتقبلوا التقدير'],
+    };
+    const out = improveLanguage('نص عادي', lang);
+    assert.ok(out.includes('نص عادي'));
+});

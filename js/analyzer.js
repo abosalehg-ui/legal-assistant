@@ -87,20 +87,24 @@ export function extractEntities(originalText) {
 }
 
 export function findRelevantArticles(articles, keywords, intents) {
+    // الحقول المطبّعة تُحسب مرة واحدة عند التحميل (data.js → withNormalized).
+    // البديل هنا للاستدعاءات التي تمرر مواد خاماً (الاختبارات مثلاً).
+    const normalizedKeywords = keywords.map(normalizeArabic);
+
     const scored = articles.map(article => {
         let score = 0;
+        const artKeywords = article._normKeywords || (article.keywords || []).map(normalizeArabic);
+        const artTitle = article._normTitle ?? normalizeArabic(article.title || '');
+        const artText = article._normText ?? normalizeArabic(article.text || '');
 
-        keywords.forEach(keyword => {
-            const normalizedKw = normalizeArabic(keyword);
-
-            article.keywords.forEach(k => {
-                const normalizedK = normalizeArabic(k);
+        normalizedKeywords.forEach(normalizedKw => {
+            artKeywords.forEach(normalizedK => {
                 if (normalizedK === normalizedKw) score += 15;
                 else if (normalizedK.includes(normalizedKw) || normalizedKw.includes(normalizedK)) score += 10;
             });
 
-            if (normalizeArabic(article.title).includes(normalizedKw)) score += 8;
-            if (normalizeArabic(article.text).includes(normalizedKw)) score += 3;
+            if (artTitle.includes(normalizedKw)) score += 8;
+            if (artText.includes(normalizedKw)) score += 3;
         });
 
         if (intents.length > 0) {
