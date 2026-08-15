@@ -575,11 +575,11 @@ input[type="text"], input[type="url"] {
 
 .tag.intent { background: var(--secondary); color: var(--primary-dark); }
 .tag.entity { background: var(--primary-light); }
-.tag.urgent { background: #e67e22; color: #fff; }
-.tag.tone-complaint { background: #c0392b; color: #fff; }
-.tag.tone-inquiry { background: #2980b9; color: #fff; }
-.tag.tone-request { background: #8e44ad; color: #fff; }
-.tag.tone-neutral { background: #7f8c8d; color: #fff; }
+.tag.urgent { background: var(--tone-urgent); color: #fff; }
+.tag.tone-complaint { background: var(--tone-complaint); color: #fff; }
+.tag.tone-inquiry { background: var(--tone-inquiry); color: #fff; }
+.tag.tone-request { background: var(--tone-request); color: #fff; }
+.tag.tone-neutral { background: var(--tone-neutral); color: #fff; }
 
 .analysis-item { margin-bottom: 0.6rem; font-size: 0.9rem; }
 .analysis-item strong { color: var(--primary); }

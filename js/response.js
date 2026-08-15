@@ -2,8 +2,15 @@
 
 import { compileMatcher } from './matcher.js';
 
-export function suggestResponse(message, articles, intents, entities, language, defaultResponse = '') {
+export function suggestResponse(message, articles, intents, entities, language, defaultResponse = '', tone = null) {
     let response = language.openings[0] + '\n\n';
+
+    // النبرة تُكيّف الرد من البيانات لا من الكود: فقرة اعتذارية للشكوى مثلاً
+    // (data/colloquial-map.json ← toneOpenings). غياب الحقل أو النبرة = لا تغيير.
+    const toneOpening = tone && language.toneOpenings && language.toneOpenings[tone.primary];
+    if (toneOpening) {
+        response += toneOpening + '\n\n';
+    }
 
     // نص الرد يأتي من بيانات النية نفسها (data/intents.json) لا من الكود.
     const topIntent = intents[0];
@@ -19,6 +26,10 @@ export function suggestResponse(message, articles, intents, entities, language, 
         articles.slice(0, 3).forEach(article => {
             response += '\n• ' + article.number + ': ' + article.title;
         });
+    }
+
+    if (tone && tone.urgent && language.urgentNote) {
+        response += '\n\n' + language.urgentNote;
     }
 
     response += language.closings[0];

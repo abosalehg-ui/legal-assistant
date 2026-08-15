@@ -53,6 +53,35 @@ test('suggestResponse: يدرج أرقام المرجع وأول ثلاث موا
     assert.ok(!out.includes('المادة 4'));
 });
 
+test('suggestResponse: نبرة الشكوى تدرج فقرة الاعتذار والاستعجال يضيف ملاحظة الأولوية', () => {
+    const langWithTones = {
+        ...language,
+        toneOpenings: { complaint: 'نعتذر لكم عمّا واجهتموه.' },
+        urgentNote: 'تمت الإشارة إلى أولوية طلبكم.',
+    };
+    const complaintTone = { primary: 'complaint', urgent: true };
+    const out = suggestResponse('رسالة', [], [], [], langWithTones, DEFAULT, complaintTone);
+    assert.ok(out.includes('نعتذر لكم عمّا واجهتموه.'));
+    assert.ok(out.indexOf('نعتذر') < out.indexOf(DEFAULT), 'الاعتذار قبل نص الرد');
+    assert.ok(out.includes('تمت الإشارة إلى أولوية طلبكم.'));
+    assert.ok(out.indexOf('أولوية') < out.indexOf(langWithTones.closings[0].trim()), 'الاستعجال قبل الخاتمة');
+
+    // استفسار غير عاجل: لا اعتذار ولا ملاحظة أولوية.
+    const inquiryOut = suggestResponse('رسالة', [], [], [], langWithTones, DEFAULT, { primary: 'inquiry', urgent: false });
+    assert.ok(!inquiryOut.includes('نعتذر لكم'));
+    assert.ok(!inquiryOut.includes('أولوية طلبكم'));
+});
+
+test('suggestResponse: بلا نبرة أو بلا حقول النبرة في البيانات = الخرج القديم حرفياً', () => {
+    const before = suggestResponse('رسالة', [], [], [], language, DEFAULT);
+    assert.equal(suggestResponse('رسالة', [], [], [], language, DEFAULT, null), before);
+    // نبرة موجودة لكن اللغة بلا toneOpenings/urgentNote — لا تغيير أيضاً.
+    assert.equal(
+        suggestResponse('رسالة', [], [], [], language, DEFAULT, { primary: 'complaint', urgent: true }),
+        before,
+    );
+});
+
 test('improveLanguage: يحول العامية مع البادئات ويحترم حدود الكلمة', () => {
     const out = improveLanguage('اخوي وتروح المحكمه بكره وبتلاقي القضية', language);
     assert.ok(out.includes('أخي الكريم'));

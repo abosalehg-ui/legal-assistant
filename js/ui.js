@@ -138,10 +138,20 @@ const TONE_LABELS = {
     neutral: { label: 'محايدة', class: 'tone-neutral' },
 };
 
+// وصف النبرة للعرض: الاسم من بيانات JSON أولاً، ثم الخريطة المدمجة، وأخيراً — لنبرة
+// جديدة في JSON بلا label — مفتاحها نفسه بدل ادّعاء «محايدة» لنبرة مرصودة فعلاً.
+export function toneDisplay(primary, jsonLabel = undefined) {
+    const known = TONE_LABELS[primary];
+    return {
+        label: jsonLabel || (known ? known.label : primary),
+        class: known ? known.class : 'tone-neutral',
+    };
+}
+
 export function renderAnalysis(analysis) {
     const box = document.getElementById('analysisBox');
     const content = document.getElementById('analysisContent');
-    const toneInfo = TONE_LABELS[analysis.tone.primary] || TONE_LABELS.neutral;
+    const toneInfo = toneDisplay(analysis.tone.primary, analysis.tone.label);
 
     let html = '';
     html += `<div class="analysis-item"><strong>نبرة الرسالة:</strong> <span class="tag ${toneInfo.class}">${escapeHtml(toneInfo.label)}</span>`;

@@ -52,6 +52,33 @@ test('addResponse: يحفظ ويعيد العنصر ويقدمه في أول ا�
     assert.equal(list[0].text, 'الرد الثاني');
 });
 
+test('addResponse: يحفظ النبرة والاستعجال من آخر تحليل ويطبّع القيم الشاذة', () => {
+    const item = addResponse('رد شكوى', 'فئة', { tone: 'complaint', urgent: true });
+    assert.equal(item.tone, 'complaint');
+    assert.equal(item.urgent, true);
+    // بلا extras أو بقيم غير صالحة → افتراضات آمنة.
+    const plain = addResponse('رد عادي');
+    assert.equal(plain.tone, null);
+    assert.equal(plain.urgent, false);
+    const weird = addResponse('رد', null, { tone: 7, urgent: 'yes' });
+    assert.equal(weird.tone, null);
+    assert.equal(weird.urgent, false);
+});
+
+test('importResponses: يحفظ النبرة والاستعجال الصالحين ويطبّع الشاذ', () => {
+    // المعرفات حديثة حتى لا تسقط العناصر بسياسة الاحتفاظ (timestamp يعتمد id).
+    const now = Date.now();
+    const added = importResponses([
+        { id: now - 1000, text: 'أ', tone: 'complaint', urgent: true },
+        { id: now - 2000, text: 'ب', tone: 5, urgent: 'نعم' },
+    ]);
+    assert.equal(added, 2);
+    assert.equal(findResponse(now - 1000).tone, 'complaint');
+    assert.equal(findResponse(now - 1000).urgent, true);
+    assert.equal(findResponse(now - 2000).tone, null);
+    assert.equal(findResponse(now - 2000).urgent, false);
+});
+
 test('addResponse: يعيد null عند امتلاء مساحة التخزين بدل رمي استثناء', () => {
     globalThis.__quotaFull = true;
     assert.equal(addResponse('نص'), null);

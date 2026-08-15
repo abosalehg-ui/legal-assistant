@@ -63,13 +63,16 @@ export function loadSavedResponses() {
 }
 
 // تعيد العنصر المحفوظ، أو null إذا تعذّرت الكتابة.
-export function addResponse(text, category = null) {
+// extras: نتيجة آخر تحليل تُحفظ مع الرد { tone, urgent } — اختيارية بالكامل.
+export function addResponse(text, category = null, extras = {}) {
     const list = loadSavedResponses();
     const now = Date.now();
     const item = {
         id: now,
         text,
         category,
+        tone: typeof extras.tone === 'string' && extras.tone ? extras.tone : null,
+        urgent: extras.urgent === true,
         date: formatDate(now),
         timestamp: now,
         preview: text.substring(0, 100),
@@ -111,6 +114,8 @@ export function importResponses(items) {
             id,
             text: raw.text,
             category: typeof raw.category === 'string' ? raw.category : null,
+            tone: typeof raw.tone === 'string' && raw.tone ? raw.tone : null,
+            urgent: raw.urgent === true,
             date: typeof raw.date === 'string' ? raw.date : '',
             timestamp: typeof raw.timestamp === 'number' ? raw.timestamp : id,
             preview: raw.text.substring(0, 100),

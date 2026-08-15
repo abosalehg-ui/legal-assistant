@@ -67,6 +67,7 @@ const app = {
     savedResponses: [],
     currentFilter: 'all',
     lastAnalysisIntent: null,
+    lastAnalysisTone: null,
     lastEntities: [],
     // آخر نتائج تحليل مرتّبة بالصلة. تُحفظ حتى لا تضيع عند مسح خانة البحث.
     lastRelevantArticles: null,
@@ -368,6 +369,7 @@ function analyzeMessage() {
     renderArticles(relevantArticles, app.selectedArticleIds);
 
     app.lastAnalysisIntent = detectedIntents[0] || null;
+    app.lastAnalysisTone = tone;
     app.lastEntities = entities;
     app.lastRelevantArticles = relevantArticles;
     app.currentFilter = 'all';
@@ -375,7 +377,7 @@ function analyzeMessage() {
 
     const response = suggestResponse(
         message, relevantArticles, detectedIntents, entities,
-        app.language, app.defaultResponse,
+        app.language, app.defaultResponse, tone,
     );
     setOutput(response);
 
@@ -444,7 +446,11 @@ function handleSave() {
         return;
     }
     const category = app.lastAnalysisIntent ? app.lastAnalysisIntent.label : null;
-    if (!addResponse(output, category)) {
+    const extras = {
+        tone: app.lastAnalysisTone ? app.lastAnalysisTone.primary : null,
+        urgent: Boolean(app.lastAnalysisTone && app.lastAnalysisTone.urgent),
+    };
+    if (!addResponse(output, category, extras)) {
         showToast('تعذّر الحفظ: امتلأت مساحة التخزين، احذف بعض الردود القديمة');
         return;
     }
@@ -472,6 +478,7 @@ function clearInput() {
     document.getElementById('userResponse').value = '';
     setOutput('');
     document.getElementById('analysisBox').classList.remove('show');
+    app.lastAnalysisTone = null;
     app.selectedArticleIds = [];
     document.querySelectorAll('.article-item').forEach(el => {
         el.classList.remove('selected');
