@@ -56,7 +56,9 @@ test('detectIntent: يعيد النية بحقول البيانات (slug/label/
     const detected = detectIntent(text, patterns);
     assert.equal(detected[0].id, 'session-date');
     assert.equal(detected[0].label, 'استفسار عن موعد جلسة');
-    assert.equal(detected[0].score, 20);
+    // عبارتان من كلمتين × وزن 1.5 لكل عبارة مركّبة × أولوية 10.
+    assert.equal(detected[0].score, 30);
+    assert.deepEqual(detected[0].matchedTerms.sort(), ['موعد الجلسه', 'وين جلستي']);
     assert.equal(detected[0].responseText, 'رد الجلسة');
     assert.deepEqual(detected[0].boostCategories, { 'الجلسات': 20 });
     assert.equal(detected[1].id, 'delayed-reply');
@@ -154,4 +156,45 @@ test('findRelevantArticles: بلا نوايا يعتمد على الكلمات �
     const results = findRelevantArticles(sampleArticles, ['تبليغ'], []);
     assert.equal(results[0].id, '2');
     assert.ok(!results.find(a => a.id === '1'));
+});
+
+test('normalizeArabic: الأرقام الشرقية تُردّ للاتينية والمدّ التعبيري يُختصر', () => {
+    assert.equal(normalizeArabic('طلب رقم ٤٥٢١٩٨٧'), 'طلب رقم 4521987');
+    assert.equal(normalizeArabic('متىىىى الجلسة؟'), 'متي الجلسه؟');
+    assert.equal(normalizeArabic('ضرووووري'), 'ضروري');
+    // حرفان مكرران لغة صحيحة ولا يُمسّان.
+    assert.equal(normalizeArabic('الله'), 'الله');
+});
+
+test('extractEntities: يقرأ الأرقام العربية وصيغ الجوال الدولية والرقم بعد كلمة دالة', () => {
+    const eastern = extractEntities('طلبي رقم ٤٥٢١٩٨٧ وجوالي ٠٥١٢٣٤٥٦٧٨');
+    assert.deepEqual(eastern.map(e => e.value).sort(), ['0512345678', '4521987']);
+
+    const intl = extractEntities('للتواصل +966 51 234 5678');
+    assert.deepEqual(intl.filter(e => e.type === 'رقم جوال').map(e => e.value), ['966512345678']);
+
+    // رقم مرجعي قصير لا يبلغ سبع خانات لكنه مسبوق بكلمة دالة.
+    const short = extractEntities('معاملة رقم 45219');
+    assert.deepEqual(short, [{ type: 'رقم طلب/مذكرة', value: '45219' }]);
+});
+
+test('detectIntent: يعيد العبارات التي أدّت للتصنيف والعبارة المركّبة أثقل من المفردة', () => {
+    const patterns = [
+        { id: 'a', label: 'أ', keywords: ['موعد الجلسة'], priority: 10, boostCategories: {}, responseText: '' },
+        { id: 'b', label: 'ب', keywords: ['جلسة'], priority: 10, boostCategories: {}, responseText: '' },
+    ];
+    const detected = detectIntent(normalizeArabic('متى موعد الجلسة؟'), patterns);
+    assert.equal(detected[0].id, 'a');
+    assert.ok(detected[0].score > detected[1].score, 'العبارة من كلمتين أرجح من كلمة واحدة');
+    assert.deepEqual(detected[0].matchedTerms, ['موعد الجلسه']);
+});
+
+test('findRelevantArticles: «حكم» لا ترجّح مادة لا تذكر إلا «المحكمة»', () => {
+    const articles = [
+        { id: '1', number: 'م1', title: 'مقر المحكمة', text: 'تنعقد المحكمة في مقرها', category: 'أحكام عامة', keywords: ['محكمة'] },
+        { id: '2', number: 'م2', title: 'النطق بالحكم', text: 'يصدر الحكم علناً', category: 'أحكام عامة', keywords: ['حكم'] },
+    ];
+    const results = findRelevantArticles(articles, ['حكم'], []);
+    assert.equal(results.length, 1, 'المادة التي لا تذكر إلا «المحكمة» تخرج من النتائج');
+    assert.equal(results[0].id, '2');
 });

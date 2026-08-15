@@ -635,6 +635,26 @@ input[type="text"], input[type="url"] {
 }
 
 .tag.intent { background: var(--secondary); color: var(--primary-dark); }
+
+/* أزرار اختيار الموضوع: هدف لمس ٤٤px بالحشو الرأسي حفاظاً على معيار الإتاحة. */
+.intent-choice {
+    border: 2px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+    min-height: 44px;
+    padding-inline: 0.9rem;
+}
+
+.intent-choice:hover { filter: brightness(0.95); }
+.intent-choice.active { border-color: var(--primary-dark); font-weight: 700; }
+.intent-choice:focus-visible { outline: 3px solid var(--primary-dark); outline-offset: 2px; }
+
+.analysis-why {
+    margin-top: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--text-light);
+    line-height: 1.7;
+}
 .tag.entity { background: var(--primary-light); }
 .tag.urgent { background: var(--tone-urgent); color: #fff; }
 .tag.tone-complaint { background: var(--tone-complaint); color: #fff; }

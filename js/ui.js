@@ -158,12 +158,34 @@ export function renderAnalysis(analysis) {
     if (analysis.tone.urgent) html += ' <span class="tag urgent">⚡ عاجل</span>';
     html += '</div>';
 
+    // الموضوع يُعرض كأزرار لا كوسوم: أول موضوع هو المعتمد في الرد المقترح، والبقية
+    // بدائل بنقرة واحدة. التصنيف الآلي يخطئ أحياناً، والموظف الذي لا يملك تصحيحه
+    // يترك الأداة كلها — وهذا أهم فرق عملي بين «تجربة ذكية» وأداة تُستخدم كل يوم.
     if (analysis.detectedIntents.length > 0) {
         html += '<div class="analysis-item"><strong>الموضوع الرئيسي:</strong><div class="tag-list">';
-        analysis.detectedIntents.forEach(i => {
-            html += `<span class="tag intent">${escapeHtml(i.label)}</span>`;
+        analysis.detectedIntents.forEach((i, index) => {
+            const active = index === (analysis.activeIntentIndex ?? 0);
+            const why = i.matchedTerms && i.matchedTerms.length
+                ? `طابق: ${i.matchedTerms.join('، ')}`
+                : 'بلا عبارات مطابقة';
+            html += `<button type="button" class="tag intent intent-choice${active ? ' active' : ''}"`
+                + ` data-intent-index="${index}" aria-pressed="${active}"`
+                + ` title="${escapeHtml(why)}">${escapeHtml(i.label)}</button>`;
         });
-        html += '</div></div>';
+        html += '</div>';
+        const chosen = analysis.detectedIntents[analysis.activeIntentIndex ?? 0];
+        if (chosen && chosen.matchedTerms && chosen.matchedTerms.length) {
+            html += `<div class="analysis-why">استُنتج من: ${escapeHtml(chosen.matchedTerms.join('، '))}</div>`;
+        }
+        if (analysis.detectedIntents.length > 1) {
+            html += '<div class="analysis-why">التصنيف غير دقيق؟ اختر موضوعاً آخر لإعادة توليد الرد.</div>';
+        }
+        html += '</div>';
+    } else {
+        // الصمت هنا كان يُقرأ كعطل: الرد الافتراضي يظهر بلا سبب معلن.
+        html += '<div class="analysis-item"><strong>الموضوع الرئيسي:</strong> '
+            + '<span class="tag">لم يُحدَّد — استُخدم الرد العام</span>'
+            + '<div class="analysis-why">أضف عبارات هذه الرسالة إلى data/intents.json ليتعرف عليها لاحقاً.</div></div>';
     }
 
     if (analysis.entities.length > 0) {
