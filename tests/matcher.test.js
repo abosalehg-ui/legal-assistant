@@ -26,6 +26,8 @@ test('compileMatcher: سوابق العطف والجر و«ال» التعريف
     assert.equal(hasMatch('وبالحكم ايضا', rx), true);
     assert.equal(hasMatch('فالجلسه مهمه', rx), true);
     assert.equal(hasMatch('الجلسه', rx), true);
+    // «لل»: لام الجر مع «ال» المدغمة (للجلسة = ل + الجلسة).
+    assert.equal(hasMatch('موعد للجلسه القادمه', rx), true);
     // حروف ليست سوابق لا تُقبل: «مجلسه» ليست «جلسه».
     assert.equal(hasMatch('مجلسه', rx), false);
 });
