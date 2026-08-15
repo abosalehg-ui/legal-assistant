@@ -3,6 +3,10 @@
 // هذا هو حارس تعديلات القوائم: أي إضافة أو حذف في data/intents.json يمر من هنا،
 // فإن هبطت الدقة تحت العتبة انكسر الاختبار بدل أن يُكتشف التراجع عند الموظف.
 // العتبات أدنى من 100% عمداً حتى لا تتحول كل إضافة كلمة إلى معركة مع حالة حدية واحدة.
+//
+// تنبيه على قراءة الرقم: مجموعة التقييم كُتبت بالتوازي مع قوائم الكلمات، فهي تقيس
+// «هل انكسر ما كان يعمل» لا «كيف يتصرف التطبيق أمام رسالة لم يرها أحد». الرقم
+// الحقيقي يأتي من رسائل واردة فعلية تُضاف إلى الملف كلما ظهر تصنيف خاطئ عند العمل.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,10 +16,10 @@ import { normalizeArabic, detectTone, detectIntent } from '../js/analyzer.js';
 const intents = JSON.parse(readFileSync(new URL('../data/intents.json', import.meta.url), 'utf8'));
 const samples = JSON.parse(readFileSync(new URL('./fixtures/labeled-messages.json', import.meta.url), 'utf8'));
 
-const TONE_THRESHOLD = 0.9;
-const INTENT_THRESHOLD = 0.8;
+const TONE_THRESHOLD = 0.95;
+const INTENT_THRESHOLD = 0.93;
 
-test('دقة النبرة على مجموعة التقييم ≥ 90% والاستعجال مضبوط بالكامل', () => {
+test('دقة النبرة على مجموعة التقييم ≥ 95% والاستعجال مضبوط بالكامل', () => {
     const toneFails = [];
     const urgentFails = [];
     for (const sample of samples) {
@@ -35,7 +39,7 @@ test('دقة النبرة على مجموعة التقييم ≥ 90% والاس�
     assert.deepEqual(urgentFails, [], 'علم الاستعجال أخطأ في هذه الرسائل');
 });
 
-test('دقة النية الأولى على الرسائل ذات النية المتوقعة ≥ 80%', () => {
+test('دقة النية الأولى على الرسائل ذات النية المتوقعة ≥ 93%', () => {
     const withIntent = samples.filter(s => s.intentId !== null);
     const fails = [];
     for (const sample of withIntent) {

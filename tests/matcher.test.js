@@ -8,6 +8,7 @@ import {
     countDistinctMatches,
     hasMatch,
     getCachedMatcher,
+    getPhraseMatcher,
 } from '../js/matcher.js';
 import { normalizeArabic } from '../js/analyzer.js';
 
@@ -83,4 +84,42 @@ test('getCachedMatcher: يطبّع العبارات قبل الترجمة فيط
     const words = ['أرجو الإفادة'];
     const rx = getCachedMatcher(words, normalizeArabic, { prefix: 'clitic+al' });
     assert.equal(hasMatch(normalizeArabic('أرجو الإفادة عاجلاً'), rx), true);
+});
+
+test('compileMatcher: اللواحق المتصلة تُطابق الكلمة المجردة (طلبكم، قضيتهم، جلساتنا)', () => {
+    const rx = compileMatcher(['طلب', 'قضية', 'جلسة'], {
+        prefix: 'clitic+al', suffix: true, normalize: normalizeArabic,
+    });
+    for (const text of ['وصلني طلبكم', 'بخصوص قضيتهم', 'حضرنا جلساتنا', 'الطلبات المقدمة']) {
+        assert.ok(hasMatch(normalizeArabic(text), rx), `يفترض أن يطابق: ${text}`);
+    }
+});
+
+test('compileMatcher: التاء المربوطة وحدها تتصرّف — «ليه» لا تطابق «ليت»', () => {
+    // بعد التطبيع تصير «ليه» و«جلسة» كلتاهما منتهيتين بهاء؛ الفرق في الأصل الخام وحده.
+    const real = compileMatcher(['ليه'], { prefix: 'clitic+al', suffix: true, normalize: normalizeArabic });
+    assert.equal(hasMatch(normalizeArabic('يا ليت الأمر انتهى'), real), false);
+    const marbuta = compileMatcher(['جلسة'], { prefix: 'clitic+al', suffix: true, normalize: normalizeArabic });
+    assert.ok(hasMatch(normalizeArabic('موعد جلستنا'), marbuta));
+});
+
+test('compileMatcher: تعطيل اللواحق يمنع ابتلاع حرف ليس من الكلمة (وضع محسّن الصياغة)', () => {
+    const rx = compileMatcher(['ابغى'], { prefix: 'clitic', normalize: normalizeArabic });
+    const m = normalizeArabic('ابغاك تساعدني').match(rx);
+    assert.equal(m, null, 'بلا لواحق: «ابغاك» ليست «ابغى»');
+});
+
+test('countDistinctMatches: الصيغة المصرّفة تُردّ إلى مفتاحها فلا تُعدّ مرتين', () => {
+    const keys = ['جلسة'];
+    const normKeys = keys.map(normalizeArabic);
+    const rx = compileMatcher(keys, { prefix: 'clitic+al', suffix: true, normalize: normalizeArabic });
+    const text = normalizeArabic('الجلسة والجلسات وجلستي');
+    assert.equal(countDistinctMatches(text, rx, normKeys), 1);
+});
+
+test('getPhraseMatcher: كاش بالنص لا بالهوية — نفس العبارة تعيد نفس الكائن', () => {
+    const a = getPhraseMatcher('تبليغ', { prefix: 'clitic+al', suffix: true, normalize: normalizeArabic });
+    const b = getPhraseMatcher('تبليغ', { prefix: 'clitic+al', suffix: true, normalize: normalizeArabic });
+    assert.equal(a, b);
+    assert.equal(getPhraseMatcher('', {}), null);
 });

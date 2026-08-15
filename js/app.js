@@ -70,6 +70,10 @@ const app = {
     savedResponses: [],
     currentFilter: 'all',
     archiveFilters: { query: '', status: 'all', tone: 'all', category: 'all' },
+    lastMessage: '',
+    lastKeywords: [],
+    lastDetectedIntents: [],
+    activeIntentIndex: 0,
     lastAnalysisIntent: null,
     lastAnalysisTone: null,
     lastEntities: [],
@@ -240,6 +244,16 @@ function bindEvents() {
 
     document.getElementById('articleSearch').addEventListener('input', searchArticles);
 
+    // تصحيح التصنيف بنقرة: يعيد ترتيب المواد ويولّد الرد على أساس الموضوع المختار.
+    document.getElementById('analysisContent')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-intent-index]');
+        if (!btn) return;
+        const index = Number(btn.dataset.intentIndex);
+        if (index === app.activeIntentIndex) return;
+        applyIntentSelection(index);
+        showToast('أُعيد توليد الرد على الموضوع المختار');
+    });
+
     document.getElementById('savedSearch').addEventListener('input', (e) => {
         app.archiveFilters.query = e.target.value;
         renderFilteredArchive();
@@ -394,29 +408,46 @@ function analyzeMessage() {
     }
 
     const normalizedMsg = normalizeArabic(message);
-    const foundKeywords = extractKeywords(normalizedMsg, app.synonymsMap);
-    const detectedIntents = detectIntent(normalizedMsg, app.intentPatterns);
-    const tone = detectTone(normalizedMsg, app.toneIndicators);
-    const entities = extractEntities(message);
-    const relevantArticles = findRelevantArticles(store.getArticles(), foundKeywords, detectedIntents);
+    app.lastMessage = message;
+    app.lastKeywords = extractKeywords(normalizedMsg, app.synonymsMap);
+    app.lastDetectedIntents = detectIntent(normalizedMsg, app.intentPatterns);
+    app.lastAnalysisTone = detectTone(normalizedMsg, app.toneIndicators);
+    app.lastEntities = extractEntities(message);
 
-    renderAnalysis({ foundKeywords, detectedIntents, tone, entities });
-    renderArticles(relevantArticles, app.selectedArticleIds);
-
-    app.lastAnalysisIntent = detectedIntents[0] || null;
-    app.lastAnalysisTone = tone;
-    app.lastEntities = entities;
-    app.lastRelevantArticles = relevantArticles;
     app.currentFilter = 'all';
     renderCategoryFilter(store.getCategories(), 'all');
 
-    const response = suggestResponse(
-        message, relevantArticles, detectedIntents, entities,
-        app.language, app.defaultResponse, tone,
-    );
-    setOutput(response);
+    const count = applyIntentSelection(0);
+    showToast(`تم العثور على ${count} مادة ذات صلة`);
+}
 
-    showToast(`تم العثور على ${relevantArticles.length} مادة ذات صلة`);
+// يعيد بناء المواد والرد على أساس الموضوع المختار (الأول تلقائياً، أو ما ينقره
+// الموظف). النية المختارة تتصدر القائمة الممررة لأن الترجيح والرد يقرآن أولها.
+function applyIntentSelection(index) {
+    const intents = app.lastDetectedIntents || [];
+    const active = Math.min(Math.max(index, 0), Math.max(intents.length - 1, 0));
+    const ordered = intents.length ? [intents[active], ...intents.filter((_, i) => i !== active)] : [];
+
+    const relevantArticles = findRelevantArticles(store.getArticles(), app.lastKeywords || [], ordered);
+
+    renderAnalysis({
+        foundKeywords: app.lastKeywords || [],
+        detectedIntents: intents,
+        activeIntentIndex: active,
+        tone: app.lastAnalysisTone,
+        entities: app.lastEntities || [],
+    });
+    renderArticles(relevantArticles, app.selectedArticleIds);
+
+    app.activeIntentIndex = active;
+    app.lastAnalysisIntent = ordered[0] || null;
+    app.lastRelevantArticles = relevantArticles;
+
+    setOutput(suggestResponse(
+        app.lastMessage, relevantArticles, ordered, app.lastEntities || [],
+        app.language, app.defaultResponse, app.lastAnalysisTone,
+    ));
+    return relevantArticles.length;
 }
 
 function toggleArticleSelection(id) {
