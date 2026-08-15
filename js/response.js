@@ -1,5 +1,7 @@
 // توليد الرد المقترح وتحسين الصياغة.
 
+import { compileMatcher } from './matcher.js';
+
 export function suggestResponse(message, articles, intents, entities, language, defaultResponse = '') {
     let response = language.openings[0] + '\n\n';
 
@@ -23,38 +25,28 @@ export function suggestResponse(message, articles, intents, entities, language, 
     return response;
 }
 
-function escapeRegExp(text) {
-    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-const ARABIC_LETTER = '\\u0621-\\u064A';
-
-// تعبير واحد بتبادل بدل تعبير لكل مدخل. فائدتان:
+// تعبير واحد بتبادل (compileMatcher من matcher.js) بدل تعبير لكل مدخل. فائدتان:
 //  1) تمريرة واحدة على النص، فلا يمكن لمخرج استبدال مبكر أن يطابقه مفتاح لاحق (تسلسل).
 //  2) التعبيرات تُبنى مرة واحدة لكل قاموس بدل ~359 كائن RegExp في كل نقرة.
-// الترتيب تنازلياً بالطول ضروري: التبادل يختار أول بديل يطابق، فالأطول يجب أن يُجرَّب أولاً.
-function buildMatcher(map, withPrefix) {
-    const keys = Object.keys(map).sort((a, b) => b.length - a.length);
-    if (keys.length === 0) return null;
-    const prefix = withPrefix ? '([وفبلك]?)' : '()';
-    return new RegExp(
-        `(^|[^${ARABIC_LETTER}])${prefix}(${keys.map(escapeRegExp).join('|')})(?=[^${ARABIC_LETTER}]|$)`,
-        'g',
-    );
-}
-
+// الكاش هنا بمفتاح كائن اللغة نفسه (مفاتيح القواميس تُستخرج جديدة في كل استدعاء
+// فلا يصلح كاش matcher.js المبني على هوية المصفوفة).
 const matcherCache = new WeakMap();
 
 function getMatchers(language) {
     let matchers = matcherCache.get(language);
     if (!matchers) {
         matchers = {
-            colloquial: buildMatcher(language.colloquialToFormal, true),
-            legalTerms: buildMatcher(language.legalTerms, false),
+            colloquial: compileMatcher(Object.keys(language.colloquialToFormal), { prefix: 'clitic' }),
+            legalTerms: compileMatcher(Object.keys(language.legalTerms)),
         };
         matcherCache.set(language, matchers);
     }
     return matchers;
+}
+
+// العبارة المطابقة قد تحمل فراغاً غير قياسي (مسافة مكررة) — توحيده يعيدها لمفتاح القاموس.
+function toMapKey(word) {
+    return word.replace(/\s+/g, ' ');
 }
 
 export function improveLanguage(input, language) {
@@ -64,12 +56,12 @@ export function improveLanguage(input, language) {
     // دالة استبدال بدل سلسلة '$1$2': تمنع تفسير أي '$' داخل النص الفصيح كمرجع مجموعة.
     if (colloquial) {
         improved = improved.replace(colloquial, (match, before, wordPrefix, word) =>
-            before + wordPrefix + language.colloquialToFormal[word]);
+            before + wordPrefix + language.colloquialToFormal[toMapKey(word)]);
     }
 
     if (legalTerms) {
         improved = improved.replace(legalTerms, (match, before, wordPrefix, word) =>
-            before + language.legalTerms[word]);
+            before + language.legalTerms[toMapKey(word)]);
     }
 
     if (!improved.includes('السلام عليكم')) {
