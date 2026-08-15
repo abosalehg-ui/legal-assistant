@@ -28,6 +28,13 @@ export default [
         },
     },
     {
+        // اختبارات الـ DOM تركّب jsdom على globalThis، فتصبح globals المتصفح متاحة فيها.
+        files: ['tests/ui.test.js'],
+        languageOptions: {
+            globals: { ...globals.node, ...globals.browser },
+        },
+    },
+    {
         ignores: ['node_modules/'],
     },
 ];

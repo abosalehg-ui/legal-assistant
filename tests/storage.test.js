@@ -24,13 +24,22 @@ const {
     deleteResponse,
     findResponse,
     importResponses,
+    clearAllResponses,
     computeStats,
+    applyRetention,
+    getRetentionDays,
+    setRetentionDays,
+    takeLastPurgedCount,
     MAX_SAVED,
+    DEFAULT_RETENTION_DAYS,
 } = await import('../js/storage.js');
+
+const DAY = 24 * 60 * 60 * 1000;
 
 beforeEach(() => {
     globalThis.localStorage.clear();
     globalThis.__quotaFull = false;
+    takeLastPurgedCount();
 });
 
 test('addResponse: يحفظ ويعيد العنصر ويقدمه في أول القائمة', () => {
@@ -49,10 +58,12 @@ test('addResponse: يعيد null عند امتلاء مساحة التخزين �
 });
 
 test('addResponse: يحترم الحد الأقصى للأرشيف', () => {
+    // طوابع زمنية حديثة: عناصر قديمة كانت ستُحذف بسياسة الاحتفاظ قبل فحص الحد الأقصى.
+    const now = Date.now();
     const many = Array.from({ length: MAX_SAVED }, (_, i) => ({
-        id: i + 1,
+        id: now - i,
         text: `رد ${i}`,
-        timestamp: i + 1,
+        timestamp: now - i,
         preview: `رد ${i}`,
     }));
     globalThis.localStorage.setItem('savedResponses', JSON.stringify(many));
@@ -77,10 +88,11 @@ test('loadSavedResponses: يتعافى من JSON تالف', () => {
 test('importResponses: يدمج الردود الجديدة ويتجاهل المعرفات الموجودة', () => {
     addResponse('موجود');
     const existing = loadSavedResponses()[0];
+    const now = Date.now();
     const added = importResponses([
         { id: existing.id, text: 'مكرر' },
-        { id: 9001, text: 'جديد أ', timestamp: 9001 },
-        { id: 9002, text: 'جديد ب', timestamp: 9002 },
+        { id: 9001, text: 'جديد أ', timestamp: now - DAY },
+        { id: 9002, text: 'جديد ب', timestamp: now - 2 * DAY },
     ]);
     assert.equal(added, 2);
     const list = loadSavedResponses();
@@ -101,9 +113,72 @@ test('importResponses: يعيد null عند امتلاء مساحة التخزي
     assert.equal(importResponses([{ id: 1, text: 'x' }]), null);
 });
 
+test('clearAllResponses: يفرّغ الأرشيف كاملاً', () => {
+    addResponse('أ');
+    addResponse('ب');
+    assert.equal(loadSavedResponses().length, 2);
+    assert.equal(clearAllResponses(), true);
+    assert.deepEqual(loadSavedResponses(), []);
+});
+
+test('applyRetention: يُسقط ما تجاوز المدة ويُبقي الباقي', () => {
+    const now = Date.now();
+    const list = [
+        { id: 1, timestamp: now - 2 * DAY },
+        { id: 2, timestamp: now - 45 * DAY },
+        { id: 3, timestamp: now - 29 * DAY },
+    ];
+    const { list: kept, purged } = applyRetention(list, 30, now);
+    assert.equal(purged, 1);
+    assert.deepEqual(kept.map(r => r.id), [1, 3]);
+});
+
+test('applyRetention: القيمة 0 تعني بلا حد فلا تحذف شيئاً', () => {
+    const now = Date.now();
+    const list = [{ id: 1, timestamp: 1 }, { id: 2, timestamp: now }];
+    const { list: kept, purged } = applyRetention(list, 0, now);
+    assert.equal(purged, 0);
+    assert.equal(kept.length, 2);
+});
+
+test('applyRetention: يعتمد id عند غياب timestamp', () => {
+    const now = Date.now();
+    const { list: kept, purged } = applyRetention(
+        [{ id: now - DAY }, { id: now - 90 * DAY }], 30, now,
+    );
+    assert.equal(purged, 1);
+    assert.equal(kept.length, 1);
+});
+
+test('loadSavedResponses: يحذف المنتهي ويُبلّغ بعدده مرة واحدة فقط', () => {
+    const now = Date.now();
+    globalThis.localStorage.setItem('savedResponses', JSON.stringify([
+        { id: 1, text: 'قديم', timestamp: now - 60 * DAY },
+        { id: 2, text: 'حديث', timestamp: now - DAY },
+    ]));
+    const list = loadSavedResponses();
+    assert.equal(list.length, 1);
+    assert.equal(list[0].text, 'حديث');
+    assert.equal(takeLastPurgedCount(), 1);
+    // العدّاد يُستهلك مرة واحدة حتى لا يتكرر الإشعار
+    assert.equal(takeLastPurgedCount(), 0);
+    // الحذف مُثبَّت في التخزين لا في الذاكرة فقط
+    assert.equal(JSON.parse(globalThis.localStorage.getItem('savedResponses')).length, 1);
+});
+
+test('getRetentionDays/setRetentionDays: افتراضي سليم ويرفض القيم غير المسموحة', () => {
+    assert.equal(getRetentionDays(), DEFAULT_RETENTION_DAYS);
+    assert.equal(setRetentionDays(90), 90);
+    assert.equal(getRetentionDays(), 90);
+    assert.equal(setRetentionDays(0), 0);
+    assert.equal(getRetentionDays(), 0);
+    // قيمة غير موجودة في الخيارات ترجع للافتراضي بدل تعطيل السياسة
+    assert.equal(setRetentionDays(999), DEFAULT_RETENTION_DAYS);
+    assert.equal(getRetentionDays(), DEFAULT_RETENTION_DAYS);
+});
+
 test('computeStats: اليوم والأسبوع والفئة الأكثر تكراراً', () => {
     const now = Date.now();
-    const DAY = 24 * 60 * 60 * 1000;
     const list = [
         { id: 1, timestamp: now, category: 'جلسات' },
         { id: 2, timestamp: now - 2 * DAY, category: 'جلسات' },

@@ -9,7 +9,7 @@ globalThis.localStorage = globalThis.localStorage || {
     removeItem: () => {},
 };
 
-const { mergeArticles, isSafeUrl, validateArticle } = await import('../js/data.js');
+const { mergeArticles, isSafeUrl, validateArticle, withNormalized, toPlainArticle } = await import('../js/data.js');
 
 test('mergeArticles: المخصص يطغى على الأساسي والمحذوف يُستبعد', () => {
     const base = [
@@ -74,4 +74,42 @@ test('validateArticle: يجرّد الروابط غير الآمنة ويصلح 
     assert.deepEqual(a.keywords, []);
     assert.equal(a.sourceUrl, '');
     assert.equal(a.lastVerified, undefined);
+});
+
+test('withNormalized: يحسب حقول البحث مرة واحدة ويحفظ الأصل', () => {
+    const [a] = withNormalized([{
+        id: '1', number: 'المادة ١', title: 'إبْلاغ الخصم', text: 'نص المرافعة',
+        category: 'التبليغ', keywords: ['إشعار', 'جلسة'],
+    }]);
+    assert.equal(a._normTitle, 'ابلاغ الخصم');
+    assert.equal(a._normText, 'نص المرافعه');
+    assert.deepEqual(a._normKeywords, ['اشعار', 'جلسه']);
+    assert.equal(a.title, 'إبْلاغ الخصم', 'الحقول الأصلية تبقى كما هي للعرض');
+});
+
+test('withNormalized: يتحمل الحقول الناقصة', () => {
+    const [a] = withNormalized([{ id: '1' }]);
+    assert.equal(a._normTitle, '');
+    assert.deepEqual(a._normKeywords, []);
+});
+
+test('toPlainArticle: يجرّد الحقول الداخلية قبل التصدير', () => {
+    const [enriched] = withNormalized([{
+        id: '1', number: 'م١', title: 'ع', text: 'ن', category: 'ف',
+        keywords: ['ك'], sourceUrl: 'https://laws.boe.gov.sa/x', lastVerified: '2026-07-16',
+    }]);
+    const plain = toPlainArticle({ ...enriched, score: 42 });
+    assert.deepEqual(Object.keys(plain).sort(), [
+        'category', 'id', 'keywords', 'lastVerified', 'number', 'sourceUrl', 'text', 'title',
+    ]);
+    assert.equal(plain.score, undefined, 'درجة التطابق ليست بيانات مادة');
+    assert.equal(plain._normText, undefined);
+});
+
+test('toPlainArticle: يحذف lastVerified عند غيابه بدل كتابته فارغاً', () => {
+    const plain = toPlainArticle({
+        id: '1', number: 'م', title: 'ع', category: 'ف', text: 'ن', keywords: [],
+    });
+    assert.ok(!('lastVerified' in plain));
+    assert.equal(plain.sourceUrl, '');
 });

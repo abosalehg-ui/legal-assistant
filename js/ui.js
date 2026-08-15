@@ -1,6 +1,7 @@
 // عرض العناصر في الـ DOM وإدارة Toast والـ Modals.
 
 import { isSafeUrl } from './data.js';
+import { formatNumber, fileStamp, isStaleVerification } from './format.js';
 
 export function escapeHtml(text) {
     return String(text ?? '')
@@ -17,6 +18,23 @@ export function showToast(message) {
     toast.classList.add('show');
     clearTimeout(showToast._timer);
     showToast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// تنزيل بيانات كملف JSON — كان هذا المنطق مكرراً حرفياً في app.js و admin.js.
+export function downloadJson(data, prefix) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${prefix}-${fileStamp()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+export function setBusy(isBusy) {
+    const main = document.getElementById('mainContainer');
+    if (main) main.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+    document.body.classList.toggle('app-loading', isBusy);
 }
 
 // حبس التركيز داخل النافذة المفتوحة واستعادته عند الإغلاق (إتاحة الوصول).
@@ -60,21 +78,57 @@ function restoreFocus() {
     lastFocusedElement = null;
 }
 
+// يُطلق حدث modal:close حتى يعرف confirmDialog أن النافذة أُغلقت بـ Esc أو بالنقر خارجها.
+function dismiss(overlay) {
+    overlay.classList.remove('show');
+    overlay.removeEventListener('keydown', handleModalKeydown);
+    overlay.dispatchEvent(new CustomEvent('modal:close'));
+}
+
 export function closeModal(id) {
     const overlay = document.getElementById(id);
     if (!overlay) return;
-    overlay.classList.remove('show');
-    overlay.removeEventListener('keydown', handleModalKeydown);
+    dismiss(overlay);
     restoreFocus();
 }
 
 export function closeAllModals() {
     const open = document.querySelectorAll('.modal-overlay.show');
-    open.forEach(m => {
-        m.classList.remove('show');
-        m.removeEventListener('keydown', handleModalKeydown);
-    });
+    open.forEach(dismiss);
     if (open.length > 0) restoreFocus();
+}
+
+// بديل عن confirm() الأصلي: يستخدم نفس نظام النوافذ (RTL، حبس تركيز، تنسيق موحّد).
+// يرجع إلى confirm() فقط إذا لم تكن النافذة موجودة في الصفحة.
+export function confirmDialog(message, { confirmLabel = 'تأكيد', danger = true } = {}) {
+    const overlay = document.getElementById('confirmModal');
+    if (!overlay) return Promise.resolve(window.confirm(message));
+
+    return new Promise(resolve => {
+        const messageEl = document.getElementById('confirmModalMessage');
+        const okBtn = document.getElementById('confirmOk');
+        const cancelBtn = document.getElementById('confirmCancel');
+
+        messageEl.textContent = message;
+        okBtn.textContent = confirmLabel;
+        okBtn.className = danger ? 'btn btn-danger' : 'btn btn-primary';
+
+        const finish = result => {
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            overlay.removeEventListener('modal:close', onDismiss);
+            if (overlay.classList.contains('show')) closeModal('confirmModal');
+            resolve(result);
+        };
+        const onOk = () => finish(true);
+        const onCancel = () => finish(false);
+        const onDismiss = () => finish(false);
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        overlay.addEventListener('modal:close', onDismiss);
+        openModal('confirmModal');
+    });
 }
 
 const TONE_LABELS = {
@@ -111,7 +165,7 @@ export function renderAnalysis(analysis) {
     }
 
     if (analysis.foundKeywords.length > 0) {
-        html += `<div class="analysis-item"><strong>كلمات مفتاحية (${analysis.foundKeywords.length}):</strong><div class="tag-list">`;
+        html += `<div class="analysis-item"><strong>كلمات مفتاحية (${formatNumber(analysis.foundKeywords.length)}):</strong><div class="tag-list">`;
         analysis.foundKeywords.forEach(k => {
             html += `<span class="tag">${escapeHtml(k)}</span>`;
         });
@@ -120,6 +174,18 @@ export function renderAnalysis(analysis) {
 
     content.innerHTML = html;
     box.classList.add('show');
+}
+
+// شارة تاريخ آخر تحقق: في أداة قانونية، عمر التحقق من نص المادة معلومة تخص الموظف.
+// التاريخ يُعرض كما هو في البيانات (ISO ميلادي) لأنه ختم مصدر لا تاريخ واجهة.
+function verifiedBadge(article) {
+    if (!article.lastVerified) return '';
+    const stale = isStaleVerification(article.lastVerified);
+    const icon = stale ? '⚠️' : '✓';
+    const title = stale
+        ? 'مضى أكثر من سنة على آخر تحقق من نص المادة — يُنصح بمراجعة المصدر الرسمي'
+        : 'تاريخ آخر تحقق من نص المادة (ميلادي)';
+    return `<span class="article-verified${stale ? ' stale' : ''}" title="${escapeHtml(title)}">${icon} ${escapeHtml(article.lastVerified)}</span>`;
 }
 
 export function renderArticles(articles, selectedIds) {
@@ -132,7 +198,7 @@ export function renderArticles(articles, selectedIds) {
 
     container.innerHTML = articles.map(article => {
         const scoreTag = typeof article.score === 'number' && article.score > 0
-            ? `<span class="article-score">تطابق ${article.score}</span>`
+            ? `<span class="article-score">تطابق ${formatNumber(article.score)}</span>`
             : '';
         const isSelected = selectedIds.includes(article.id) ? 'selected' : '';
         const sourceLink = isSafeUrl(article.sourceUrl)
@@ -150,7 +216,10 @@ export function renderArticles(articles, selectedIds) {
             </div>
             <div class="article-title">${escapeHtml(article.title)}</div>
             <div class="article-text">${escapeHtml(truncated)}</div>
-            <span class="article-category">${escapeHtml(article.category)}</span>
+            <div class="article-footer">
+                <span class="article-category">${escapeHtml(article.category)}</span>
+                ${verifiedBadge(article)}
+            </div>
         </div>`;
     }).join('');
 }
@@ -158,18 +227,19 @@ export function renderArticles(articles, selectedIds) {
 export function renderTemplates(templates) {
     const grid = document.getElementById('templatesGrid');
     grid.innerHTML = templates.map(template =>
-        `<div class="template-card" data-id="${template.id}" role="button" tabindex="0">
+        `<div class="template-card" data-id="${escapeHtml(template.id)}" role="button" tabindex="0">
             <div class="template-icon">${escapeHtml(template.icon)}</div>
             <div class="template-name">${escapeHtml(template.name)}</div>
         </div>`,
     ).join('');
 }
 
-export function renderCategoryFilter(categories) {
+export function renderCategoryFilter(categories, activeCategory = 'all') {
     const container = document.getElementById('categoryFilter');
-    let html = '<button class="category-btn active" data-category="all">الكل</button>';
+    let html = `<button class="category-btn${activeCategory === 'all' ? ' active' : ''}" data-category="all">الكل</button>`;
     categories.forEach(cat => {
-        html += `<button class="category-btn" data-category="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+        const active = cat === activeCategory ? ' active' : '';
+        html += `<button class="category-btn${active}" data-category="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
     });
     container.innerHTML = html;
 }
@@ -182,15 +252,15 @@ export function renderSavedResponses(savedResponses, searchQuery = '') {
 
     if (filtered.length === 0) {
         const msg = searchQuery ? 'لا توجد نتائج مطابقة' : 'لا توجد ردود محفوظة بعد';
-        container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>${msg}</p></div>`;
+        container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>${escapeHtml(msg)}</p></div>`;
         return;
     }
 
     container.innerHTML = filtered.map(response =>
         `<div class="saved-item">
             <div class="saved-item-actions">
-                <button data-action="load" data-id="${response.id}" title="تحميل">📂</button>
-                <button data-action="delete" data-id="${response.id}" title="حذف">🗑️</button>
+                <button data-action="load" data-id="${escapeHtml(response.id)}" title="تحميل" aria-label="تحميل الرد المحفوظ">📂</button>
+                <button data-action="delete" data-id="${escapeHtml(response.id)}" title="حذف" aria-label="حذف الرد المحفوظ">🗑️</button>
             </div>
             <div class="saved-item-preview">${escapeHtml(response.preview)}${response.text.length > response.preview.length ? '…' : ''}</div>
             <div class="saved-item-date">${escapeHtml(response.date)}</div>
@@ -207,10 +277,10 @@ export function renderStats(stats, articlesCount) {
         total: document.getElementById('statTotal'),
         topCategory: document.getElementById('statTopCategory'),
     };
-    if (els.articles) els.articles.textContent = articlesCount;
-    if (els.saved) els.saved.textContent = stats.total;
-    if (els.today) els.today.textContent = stats.today;
-    if (els.week) els.week.textContent = stats.week;
-    if (els.total) els.total.textContent = stats.total;
+    if (els.articles) els.articles.textContent = formatNumber(articlesCount);
+    if (els.saved) els.saved.textContent = formatNumber(stats.total);
+    if (els.today) els.today.textContent = formatNumber(stats.today);
+    if (els.week) els.week.textContent = formatNumber(stats.week);
+    if (els.total) els.total.textContent = formatNumber(stats.total);
     if (els.topCategory) els.topCategory.textContent = stats.topCategory || '—';
 }

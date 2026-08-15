@@ -21,7 +21,11 @@ import {
     deleteResponse,
     findResponse,
     importResponses,
+    clearAllResponses,
     computeStats,
+    getRetentionDays,
+    setRetentionDays,
+    takeLastPurgedCount,
 } from './storage.js';
 import {
     showToast,
@@ -34,18 +38,38 @@ import {
     openModal,
     closeModal,
     closeAllModals,
+    downloadJson,
+    confirmDialog,
+    setBusy,
 } from './ui.js';
 import { initTheme, toggleTheme } from './theme.js';
 import { registerShortcuts, getShortcutsList } from './shortcuts.js';
-import { initAdmin, setAdminState } from './admin.js';
+import { initAdmin, MAX_IMPORT_BYTES } from './admin.js';
+import { formatDate } from './format.js';
+import * as store from './store.js';
+
+// حارس ضد التضمين في إطار (clickjacking): frame-ancestors لا يمكن ضبطه عبر <meta>،
+// و GitHub Pages لا يسمح بترويسات HTTP مخصصة. يُستبدل بالترويسة عند النقل لاستضافة تدعمها.
+try {
+    if (window.top !== window.self) window.top.location = window.self.location;
+} catch {
+    // أصل مختلف: قراءة top ممنوعة، والتنقل أعلاه هو المحاولة الوحيدة الممكنة.
+}
 
 const app = {
-    data: null,
+    language: null,
+    templates: [],
+    intentPatterns: [],
+    defaultResponse: '',
+    toneIndicators: {},
+    synonymsMap: {},
     selectedArticleIds: [],
     savedResponses: [],
     currentFilter: 'all',
     lastAnalysisIntent: null,
     lastEntities: [],
+    // آخر نتائج تحليل مرتّبة بالصلة. تُحفظ حتى لا تضيع عند مسح خانة البحث.
+    lastRelevantArticles: null,
     outputBackup: null,
 };
 
@@ -70,64 +94,90 @@ function showLoadError() {
     }, { once: true });
 }
 
+let eventsBound = false;
+
 async function start() {
+    setBusy(true);
+    let data;
     try {
-        app.data = await loadData();
+        data = await loadData();
     } catch (err) {
         console.error(err);
+        setBusy(false);
         showToast('تعذّر تحميل بيانات التطبيق');
         showLoadError();
         return;
     }
+
+    app.language = data.language;
+    app.templates = data.templates;
+    app.intentPatterns = data.intentPatterns;
+    app.defaultResponse = data.defaultResponse;
+    app.toneIndicators = data.toneIndicators;
+    app.synonymsMap = data.synonymsMap;
+
+    store.init(data.baseArticles);
     app.savedResponses = loadSavedResponses();
 
-    renderTemplates(app.data.templates);
-    renderCategoryFilter(uniqueCategories());
+    renderTemplates(app.templates);
+    renderCategoryFilter(store.getCategories(), app.currentFilter);
     renderSavedResponses(app.savedResponses);
     refreshStats();
+    syncRetentionSelect();
 
-    bindEvents();
-    initAdmin(app.data, (newState) => {
-        app.data.baseArticles = newState.baseArticles;
-        app.data.customArticles = newState.customArticles;
-        app.data.deletedIds = newState.deletedIds;
-        app.data.articles = newState.articles;
-        setAdminState(newState);
-        renderCategoryFilter(uniqueCategories());
-        refreshStats();
-        if (app.currentFilter !== 'all') {
-            // إذا حُذفت الفئة المفلترة نعود إلى «الكل» بدل فلتر يشير لفئة غير موجودة.
-            if (!uniqueCategories().includes(app.currentFilter)) {
-                filterByCategory('all');
-            } else {
-                filterByCategory(app.currentFilter);
-            }
-        }
-    });
+    if (!eventsBound) {
+        bindEvents();
+        initAdmin();
+        store.subscribe(onArticlesChanged);
+        registerShortcuts({
+            analyze: analyzeMessage,
+            improve: handleImprove,
+            save: handleSave,
+            copy: handleCopy,
+            print: handlePrint,
+            help: () => openModal('shortcutsModal'),
+            escape: closeAllModals,
+        });
+        renderShortcutsList();
+        eventsBound = true;
+    }
 
-    registerShortcuts({
-        analyze: analyzeMessage,
-        improve: handleImprove,
-        save: handleSave,
-        copy: handleCopy,
-        print: handlePrint,
-        help: () => openModal('shortcutsModal'),
-        escape: closeAllModals,
-    });
-
-    renderShortcutsList();
+    setBusy(false);
+    notifyPurged();
 }
 
-function uniqueCategories() {
-    return Array.from(new Set(app.data.articles.map(a => a.category)));
+// حذف تلقائي صامت ليس مقبولاً على عمل الموظف — يُعلَن دائماً.
+function notifyPurged() {
+    const purged = takeLastPurgedCount();
+    if (purged > 0) {
+        showToast(`حُذف تلقائياً ${purged} رد تجاوز مدة الاحتفاظ`);
+    }
+}
+
+function onArticlesChanged() {
+    renderCategoryFilter(store.getCategories(), app.currentFilter);
+    refreshStats();
+    // إذا حُذفت الفئة المفلترة نعود إلى «الكل» بدل فلتر يشير لفئة غير موجودة.
+    if (app.currentFilter !== 'all' && !store.getCategories().includes(app.currentFilter)) {
+        filterByCategory('all');
+    } else if (app.currentFilter !== 'all') {
+        filterByCategory(app.currentFilter);
+    }
 }
 
 function refreshStats() {
     const stats = computeStats(app.savedResponses);
-    renderStats(stats, app.data.articles.length);
+    renderStats(stats, store.getArticles().length);
+}
+
+function refreshSavedList() {
+    app.savedResponses = loadSavedResponses();
+    renderSavedResponses(app.savedResponses, document.getElementById('savedSearch').value);
+    refreshStats();
 }
 
 // يستبدل الرد النهائي مع حفظ نسخة للتراجع إن كان هناك نص سيُفقد.
+// كل مسار يغيّر الرد النهائي يجب أن يمر من هنا — وإلا ضاع النص بلا تراجع.
 function setOutput(newValue) {
     const output = document.getElementById('finalOutput');
     const current = output.value;
@@ -227,6 +277,21 @@ function bindEvents() {
         document.getElementById('archiveImportFile').click();
     });
     document.getElementById('archiveImportFile').addEventListener('change', importArchive);
+    document.getElementById('clearArchiveBtn').addEventListener('click', clearArchive);
+    document.getElementById('retentionSelect').addEventListener('change', changeRetention);
+}
+
+function syncRetentionSelect() {
+    const select = document.getElementById('retentionSelect');
+    if (select) select.value = String(getRetentionDays());
+}
+
+function changeRetention(e) {
+    const days = setRetentionDays(e.target.value);
+    syncRetentionSelect();
+    refreshSavedList();
+    notifyPurged();
+    showToast(days ? `مدة الاحتفاظ: ${days} يوماً` : 'تم إلغاء الحذف التلقائي');
 }
 
 function exportArchive() {
@@ -234,19 +299,36 @@ function exportArchive() {
         showToast('لا توجد ردود للتصدير');
         return;
     }
-    const blob = new Blob([JSON.stringify(app.savedResponses, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `responses-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadJson(app.savedResponses, 'responses');
     showToast('تم تصدير الأرشيف');
+}
+
+async function clearArchive() {
+    if (app.savedResponses.length === 0) {
+        showToast('الأرشيف فارغ أصلاً');
+        return;
+    }
+    const ok = await confirmDialog(
+        `سيُحذف ${app.savedResponses.length} رد محفوظ نهائياً ولا يمكن التراجع. صدّر الأرشيف أولاً إن كنت تحتاجه.`,
+        { confirmLabel: 'حذف الكل' },
+    );
+    if (!ok) return;
+    if (!clearAllResponses()) {
+        showToast('تعذّر مسح الأرشيف');
+        return;
+    }
+    refreshSavedList();
+    showToast('تم مسح كل الأرشيف');
 }
 
 async function importArchive(e) {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > MAX_IMPORT_BYTES) {
+        showToast('الملف أكبر من ٥ ميجابايت — تعذّر الاستيراد');
+        e.target.value = '';
+        return;
+    }
     try {
         const parsed = JSON.parse(await file.text());
         const added = importResponses(parsed);
@@ -254,10 +336,13 @@ async function importArchive(e) {
         if (added === null) {
             showToast('تعذّر الاستيراد: امتلأت مساحة التخزين المحلية');
         } else {
-            app.savedResponses = loadSavedResponses();
-            renderSavedResponses(app.savedResponses, document.getElementById('savedSearch').value);
-            refreshStats();
-            showToast(added > 0 ? `تمت إضافة ${added} رد إلى الأرشيف` : 'لا توجد ردود جديدة في الملف');
+            refreshSavedList();
+            const purged = takeLastPurgedCount();
+            if (purged > 0) {
+                showToast(`أُضيف ${added} رد، وحُذف ${purged} تجاوز مدة الاحتفاظ`);
+            } else {
+                showToast(added > 0 ? `تمت إضافة ${added} رد إلى الأرشيف` : 'لا توجد ردود جديدة في الملف');
+            }
         }
     } catch {
         showToast('ملف غير صالح');
@@ -273,21 +358,24 @@ function analyzeMessage() {
     }
 
     const normalizedMsg = normalizeArabic(message);
-    const foundKeywords = extractKeywords(normalizedMsg, app.data.synonymsMap);
-    const detectedIntents = detectIntent(normalizedMsg, app.data.intentPatterns);
-    const tone = detectTone(normalizedMsg, app.data.toneIndicators);
+    const foundKeywords = extractKeywords(normalizedMsg, app.synonymsMap);
+    const detectedIntents = detectIntent(normalizedMsg, app.intentPatterns);
+    const tone = detectTone(normalizedMsg, app.toneIndicators);
     const entities = extractEntities(message);
-    const relevantArticles = findRelevantArticles(app.data.articles, foundKeywords, detectedIntents);
+    const relevantArticles = findRelevantArticles(store.getArticles(), foundKeywords, detectedIntents);
 
     renderAnalysis({ foundKeywords, detectedIntents, tone, entities });
     renderArticles(relevantArticles, app.selectedArticleIds);
 
     app.lastAnalysisIntent = detectedIntents[0] || null;
     app.lastEntities = entities;
+    app.lastRelevantArticles = relevantArticles;
+    app.currentFilter = 'all';
+    renderCategoryFilter(store.getCategories(), 'all');
 
     const response = suggestResponse(
         message, relevantArticles, detectedIntents, entities,
-        app.data.language, app.data.defaultResponse,
+        app.language, app.defaultResponse,
     );
     setOutput(response);
 
@@ -310,15 +398,14 @@ function addSelectedArticleToOutput() {
         showToast('يرجى اختيار مادة أولاً');
         return;
     }
-    const output = document.getElementById('finalOutput');
-    let currentText = output.value;
+    let text = document.getElementById('finalOutput').value;
     app.selectedArticleIds.forEach(id => {
-        const article = app.data.articles.find(a => a.id === id);
-        if (article && !currentText.includes(article.number)) {
-            currentText += `\n\n📌 ${article.number}:\n"${article.text}"`;
+        const article = store.findArticle(id);
+        if (article && !text.includes(article.number)) {
+            text += `\n\n📌 ${article.number}:\n"${article.text}"`;
         }
     });
-    output.value = currentText;
+    setOutput(text);
     showToast('تمت إضافة المواد المختارة');
 }
 
@@ -328,7 +415,7 @@ function handleImprove() {
         showToast('يرجى كتابة الرد أولاً');
         return;
     }
-    setOutput(improveLanguage(input, app.data.language));
+    setOutput(improveLanguage(input, app.language));
     showToast('تم تحسين الصياغة بنجاح');
 }
 
@@ -361,9 +448,7 @@ function handleSave() {
         showToast('تعذّر الحفظ: امتلأت مساحة التخزين، احذف بعض الردود القديمة');
         return;
     }
-    app.savedResponses = loadSavedResponses();
-    renderSavedResponses(app.savedResponses, document.getElementById('savedSearch').value);
-    refreshStats();
+    refreshSavedList();
     showToast('تم حفظ الرد بنجاح ✓');
 }
 
@@ -373,23 +458,25 @@ function handlePrint() {
         showToast('لا يوجد رد للطباعة');
         return;
     }
-    const today = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
-    document.getElementById('printDate').textContent = today;
+    document.getElementById('printDate').textContent = formatDate();
     window.print();
 }
 
 function clearOutput() {
-    document.getElementById('finalOutput').value = '';
+    setOutput('');
     showToast('تم مسح الرد');
 }
 
 function clearInput() {
     document.getElementById('beneficiaryMessage').value = '';
     document.getElementById('userResponse').value = '';
-    document.getElementById('finalOutput').value = '';
+    setOutput('');
     document.getElementById('analysisBox').classList.remove('show');
     app.selectedArticleIds = [];
-    document.querySelectorAll('.article-item').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.article-item').forEach(el => {
+        el.classList.remove('selected');
+        el.setAttribute('aria-pressed', 'false');
+    });
     showToast('تم مسح البيانات');
 }
 
@@ -401,12 +488,11 @@ function loadSavedResponseToOutput(id) {
     }
 }
 
-function deleteSavedResponse(id) {
-    if (!confirm('هل أنت متأكد من حذف هذا الرد؟')) return;
+async function deleteSavedResponse(id) {
+    const ok = await confirmDialog('هل أنت متأكد من حذف هذا الرد؟', { confirmLabel: 'حذف' });
+    if (!ok) return;
     deleteResponse(id);
-    app.savedResponses = loadSavedResponses();
-    renderSavedResponses(app.savedResponses, document.getElementById('savedSearch').value);
-    refreshStats();
+    refreshSavedList();
     showToast('تم حذف الرد');
 }
 
@@ -416,29 +502,34 @@ function filterByCategory(category) {
         btn.classList.toggle('active', btn.dataset.category === category);
     });
     const list = category === 'all'
-        ? app.data.articles
-        : app.data.articles.filter(a => a.category === category);
+        ? store.getArticles()
+        : store.getArticles().filter(a => a.category === category);
     renderArticles(list, app.selectedArticleIds);
 }
 
 function searchArticles() {
     const query = document.getElementById('articleSearch').value.trim();
     if (!query) {
-        filterByCategory(app.currentFilter);
+        // إفراغ البحث يعيد آخر نتائج تحليل بدل استبدالها بكل المواد بلا ترتيب صلة.
+        if (app.currentFilter === 'all' && app.lastRelevantArticles) {
+            renderArticles(app.lastRelevantArticles, app.selectedArticleIds);
+        } else {
+            filterByCategory(app.currentFilter);
+        }
         return;
     }
     const normalizedQuery = normalizeArabic(query);
-    const results = app.data.articles.filter(article =>
-        normalizeArabic(article.text).includes(normalizedQuery) ||
-        normalizeArabic(article.title).includes(normalizedQuery) ||
-        normalizeArabic(article.number).includes(normalizedQuery) ||
-        article.keywords.some(k => normalizeArabic(k).includes(normalizedQuery)),
+    const results = store.getArticles().filter(article =>
+        article._normText.includes(normalizedQuery) ||
+        article._normTitle.includes(normalizedQuery) ||
+        article._normNumber.includes(normalizedQuery) ||
+        article._normKeywords.some(k => k.includes(normalizedQuery)),
     );
     renderArticles(results, app.selectedArticleIds);
 }
 
 function useTemplate(id) {
-    const template = app.data.templates.find(t => t.id === id);
+    const template = app.templates.find(t => t.id === id);
     if (!template) return;
 
     // تعبئة رقم الطلب/الدعوى تلقائياً من آخر تحليل. التواريخ تُترك للموظف عمداً:
