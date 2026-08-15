@@ -1,5 +1,11 @@
 // تحليل رسائل المستفيدين: تطبيع، استخراج كلمات/كيانات، تحديد نية ونبرة.
 
+import { getCachedMatcher, countDistinctMatches, hasMatch } from './matcher.js';
+
+// سوابق العطف/الجر و«ال» التعريف مقبولة قبل كلمات التصنيف: الكلمات تُكتب مجردة
+// في data/intents.json وتَرِد في الرسائل بصيغة «والجلسة» و«بالحكم» ونحوها.
+const MATCH_OPTS = { prefix: 'clitic+al' };
+
 export function normalizeArabic(text) {
     return String(text)
         .replace(/[إأآ]/g, 'ا')
@@ -15,12 +21,8 @@ export function normalizeArabic(text) {
 export function extractKeywords(normalizedText, synonymsMap) {
     const found = new Set();
     for (const [mainKeyword, synonyms] of Object.entries(synonymsMap)) {
-        for (const syn of synonyms) {
-            if (normalizedText.includes(normalizeArabic(syn))) {
-                found.add(mainKeyword);
-                break;
-            }
-        }
+        const matcher = getCachedMatcher(synonyms, normalizeArabic, MATCH_OPTS);
+        if (hasMatch(normalizedText, matcher)) found.add(mainKeyword);
     }
     return Array.from(found);
 }
@@ -28,10 +30,8 @@ export function extractKeywords(normalizedText, synonymsMap) {
 export function detectIntent(normalizedText, intentPatterns) {
     const detected = [];
     intentPatterns.forEach(pattern => {
-        let matchCount = 0;
-        pattern.keywords.forEach(kw => {
-            if (normalizedText.includes(normalizeArabic(kw))) matchCount++;
-        });
+        const matcher = getCachedMatcher(pattern.keywords, normalizeArabic, MATCH_OPTS);
+        const matchCount = countDistinctMatches(normalizedText, matcher);
         if (matchCount > 0) {
             detected.push({
                 id: pattern.id,
@@ -46,23 +46,41 @@ export function detectIntent(normalizedText, intentPatterns) {
     return detected.sort((a, b) => b.score - a.score).slice(0, 3);
 }
 
+// النبرة في JSON بشكلين: مصفوفة كلمات (الشكل القديم) أو كائن { label, priority, words }.
+// priority تحسم التعادل بين نبرتين بنفس عدد المطابقات — بدل الاعتماد على ترتيب المفاتيح.
+function toneEntry(raw) {
+    if (Array.isArray(raw)) return { label: undefined, priority: 0, words: raw };
+    return {
+        label: typeof raw.label === 'string' ? raw.label : undefined,
+        priority: typeof raw.priority === 'number' ? raw.priority : 0,
+        words: Array.isArray(raw.words) ? raw.words : [],
+    };
+}
+
 export function detectTone(normalizedText, toneIndicators) {
     // تُبنى النبرات من مفاتيح JSON نفسها حتى لا تنكسر الدالة عند إضافة نبرة جديدة.
     const scores = {};
-    for (const [tone, words] of Object.entries(toneIndicators)) {
-        scores[tone] = 0;
-        words.forEach(w => {
-            if (normalizedText.includes(normalizeArabic(w))) scores[tone]++;
-        });
+    const entries = {};
+    for (const [tone, raw] of Object.entries(toneIndicators)) {
+        const entry = toneEntry(raw);
+        entries[tone] = entry;
+        const matcher = getCachedMatcher(entry.words, normalizeArabic, MATCH_OPTS);
+        scores[tone] = countDistinctMatches(normalizedText, matcher);
     }
     const isUrgent = (scores.urgent || 0) > 0;
     delete scores.urgent;
-    const entries = Object.entries(scores);
-    const dominant = entries.length
-        ? entries.reduce((a, b) => (b[1] > a[1] ? b : a))
-        : ['neutral', 0];
+
+    let best = null;
+    for (const [tone, score] of Object.entries(scores)) {
+        if (score <= 0) continue;
+        if (!best || score > best.score
+            || (score === best.score && entries[tone].priority > best.priority)) {
+            best = { tone, score, priority: entries[tone].priority };
+        }
+    }
     return {
-        primary: dominant[1] > 0 ? dominant[0] : 'neutral',
+        primary: best ? best.tone : 'neutral',
+        label: best ? entries[best.tone].label : undefined,
         urgent: isUrgent,
         scores,
     };

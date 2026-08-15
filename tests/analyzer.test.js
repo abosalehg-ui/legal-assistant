@@ -95,6 +95,35 @@ test('detectTone: لا ينكسر عند إضافة نبرة جديدة في JSO
     assert.equal(neutral.urgent, false);
 });
 
+test('detectTone: لا يطابق داخل الكلمات — «مهلة» ليست «هل» و«سؤال» داخل كلمة لا يُحسب', () => {
+    const indicators = {
+        inquiry: ['هل', 'كيف'],
+        request: ['أرجو', 'إمهال'],
+    };
+    const tone = detectTone(normalizeArabic('أرجو إعطائي مهلة إضافية'), indicators);
+    assert.equal(tone.primary, 'request');
+    assert.equal(tone.scores.inquiry, 0, '«هل» يجب ألا تطابق داخل «مهلة»');
+});
+
+test('detectTone: الشكل الكائني يعمل والتعادل يُكسر بالأولوية لا بترتيب المفاتيح', () => {
+    // inquiry قبل complaint في الترتيب عمداً — الأولوية الأعلى هي التي يجب أن تحسم.
+    const indicators = {
+        inquiry: { label: 'استفسار', priority: 2, words: ['كيف'] },
+        complaint: { label: 'شكوى / اعتراض', priority: 3, words: ['ظلم'] },
+        urgent: { words: ['عاجل'] },
+    };
+    const tone = detectTone(normalizeArabic('كيف يقع هذا الظلم؟ الأمر عاجل'), indicators);
+    assert.equal(tone.primary, 'complaint');
+    assert.equal(tone.label, 'شكوى / اعتراض');
+    assert.equal(tone.urgent, true);
+});
+
+test('detectTone: السوابق تُقبل قبل كلمات النبرة (ال التعريف وواو العطف)', () => {
+    const indicators = { complaint: ['تأخير'], inquiry: ['متى'] };
+    assert.equal(detectTone(normalizeArabic('أشتكي من التأخير المتكرر'), indicators).primary, 'complaint');
+    assert.equal(detectTone(normalizeArabic('وتأخير الرد مستمر'), indicators).primary, 'complaint');
+});
+
 test('extractEntities: يستخرج الأنواع الأربعة ولا يكرر الرقم الواحد بنوعين', () => {
     const text = 'مذكرة رقم 251934827 بتاريخ 20/6/1447 وجوالي 0512345678 وهويتي 1098765432';
     const entities = extractEntities(text);
