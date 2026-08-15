@@ -160,6 +160,14 @@
                         <div class="value value-sm" id="statTopCategory">—</div>
                         <div class="label">الأكثر تكراراً</div>
                     </div>
+                    <div class="stat-block">
+                        <div class="value" id="statOpen">0</div>
+                        <div class="label">قيد المتابعة</div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="value" id="statComplaints">0</div>
+                        <div class="label">شكاوى محفوظة</div>
+                    </div>
                 </div>
                 <div class="privacy-note" role="note">
                     <span class="icon" aria-hidden="true">🔒</span>
@@ -172,6 +180,24 @@
                 <div class="search-box">
                     <span class="search-icon" aria-hidden="true">🔍</span>
                     <input type="text" id="savedSearch" placeholder="ابحث في الردود المحفوظة..." aria-label="البحث في الردود المحفوظة">
+                </div>
+                <div class="archive-filters">
+                    <select id="archiveStatusFilter" aria-label="تصفية حسب حالة المعالجة">
+                        <option value="all">كل الحالات</option>
+                        <option value="new">جديد</option>
+                        <option value="in-progress">قيد المعالجة</option>
+                        <option value="closed">مغلق</option>
+                    </select>
+                    <select id="archiveToneFilter" aria-label="تصفية حسب نوع الرسالة">
+                        <option value="all">كل الأنواع</option>
+                        <option value="complaint">شكوى / اعتراض</option>
+                        <option value="inquiry">استفسار</option>
+                        <option value="request">طلب</option>
+                        <option value="neutral">محايدة</option>
+                    </select>
+                    <select id="archiveCategoryFilter" aria-label="تصفية حسب الفئة">
+                        <option value="all">كل الفئات</option>
+                    </select>
                 </div>
                 <div class="retention-row">
                     <label for="retentionSelect">مدة الاحتفاظ بالردود:</label>

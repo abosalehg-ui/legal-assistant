@@ -30,6 +30,11 @@
     --selected-bg: linear-gradient(135deg, rgba(26, 95, 74, 0.1) 0%, rgba(26, 95, 74, 0.05) 100%);
     --hint-bg: rgba(201, 162, 39, 0.1);
     --modal-overlay: rgba(0, 0, 0, 0.5);
+    --tone-complaint: #c0392b;
+    --tone-inquiry: #2980b9;
+    --tone-request: #8e44ad;
+    --tone-neutral: #7f8c8d;
+    --tone-urgent: #e67e22;
 }
 
 [data-theme="dark"] {
@@ -59,4 +64,11 @@
     --selected-bg: linear-gradient(135deg, rgba(45, 139, 110, 0.25) 0%, rgba(45, 139, 110, 0.1) 100%);
     --hint-bg: rgba(212, 175, 61, 0.12);
     --modal-overlay: rgba(0, 0, 0, 0.7);
+    /* شارات النبرة أعمق وأقل تشبعاً في الداكن حتى لا تتوهج على الخلفية القاتمة،
+       مع بقاء النص الأبيض فوق حد تباين WCAG AA. */
+    --tone-complaint: #9e3529;
+    --tone-inquiry: #23648f;
+    --tone-request: #6f3587;
+    --tone-neutral: #5c676b;
+    --tone-urgent: #b3641a;
 }

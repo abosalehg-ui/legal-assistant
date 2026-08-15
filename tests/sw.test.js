@@ -47,7 +47,7 @@ globalThis.self = {
 };
 globalThis.caches = {
     open: async () => fakeCache,
-    keys: async () => ['legal-assistant-v1', 'legal-assistant-v2'],
+    keys: async () => ['legal-assistant-v2', 'legal-assistant-v3'],
     delete: async () => true,
     match: async request => cacheStore.get(keyOf(request)),
 };
@@ -149,5 +149,5 @@ test('activate يمسح إصدارات الكاش القديمة فقط', async 
     let done;
     listeners.activate({ waitUntil: promise => { done = promise; } });
     await done;
-    assert.deepEqual(deleted, ['legal-assistant-v1'], 'الإصدار الحالي يبقى');
+    assert.deepEqual(deleted, ['legal-assistant-v2'], 'الإصدار الحالي يبقى');
 });

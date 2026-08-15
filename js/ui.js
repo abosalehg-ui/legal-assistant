@@ -138,10 +138,20 @@ const TONE_LABELS = {
     neutral: { label: 'محايدة', class: 'tone-neutral' },
 };
 
+// وصف النبرة للعرض: الاسم من بيانات JSON أولاً، ثم الخريطة المدمجة، وأخيراً — لنبرة
+// جديدة في JSON بلا label — مفتاحها نفسه بدل ادّعاء «محايدة» لنبرة مرصودة فعلاً.
+export function toneDisplay(primary, jsonLabel = undefined) {
+    const known = TONE_LABELS[primary];
+    return {
+        label: jsonLabel || (known ? known.label : primary),
+        class: known ? known.class : 'tone-neutral',
+    };
+}
+
 export function renderAnalysis(analysis) {
     const box = document.getElementById('analysisBox');
     const content = document.getElementById('analysisContent');
-    const toneInfo = TONE_LABELS[analysis.tone.primary] || TONE_LABELS.neutral;
+    const toneInfo = toneDisplay(analysis.tone.primary, analysis.tone.label);
 
     let html = '';
     html += `<div class="analysis-item"><strong>نبرة الرسالة:</strong> <span class="tag ${toneInfo.class}">${escapeHtml(toneInfo.label)}</span>`;
@@ -244,28 +254,70 @@ export function renderCategoryFilter(categories, activeCategory = 'all') {
     container.innerHTML = html;
 }
 
-export function renderSavedResponses(savedResponses, searchQuery = '') {
-    const container = document.getElementById('savedList');
-    const filtered = searchQuery
-        ? savedResponses.filter(r => r.text.toLowerCase().includes(searchQuery.toLowerCase()))
-        : savedResponses;
+export const STATUS_LABELS = {
+    'new': 'جديد',
+    'in-progress': 'قيد المعالجة',
+    'closed': 'مغلق',
+};
 
-    if (filtered.length === 0) {
-        const msg = searchQuery ? 'لا توجد نتائج مطابقة' : 'لا توجد ردود محفوظة بعد';
+function statusSelect(response) {
+    const current = STATUS_LABELS[response.status] ? response.status : 'new';
+    const options = Object.entries(STATUS_LABELS).map(([value, label]) =>
+        `<option value="${value}"${value === current ? ' selected' : ''}>${escapeHtml(label)}</option>`,
+    ).join('');
+    return `<select class="saved-status status-${current}" data-action="status" data-id="${escapeHtml(response.id)}" aria-label="حالة معالجة الرد">${options}</select>`;
+}
+
+function savedItemBadges(response) {
+    let html = '';
+    if (response.tone) {
+        const toneInfo = toneDisplay(response.tone);
+        html += `<span class="tag ${toneInfo.class}">${escapeHtml(toneInfo.label)}</span>`;
+    }
+    if (response.urgent) html += '<span class="tag urgent">⚡ عاجل</span>';
+    if (response.category) html += `<span class="tag intent">${escapeHtml(response.category)}</span>`;
+    return html;
+}
+
+// filters: { query, status, tone, category } — التصفية نفسها في storage.filterSavedResponses،
+// وهنا العرض فقط. تمرير لا شيء يعرض القائمة كاملة.
+export function renderSavedResponses(savedResponses, filtered = null) {
+    const container = document.getElementById('savedList');
+    const list = filtered || savedResponses;
+
+    if (list.length === 0) {
+        const msg = savedResponses.length > 0 ? 'لا توجد نتائج مطابقة' : 'لا توجد ردود محفوظة بعد';
         container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>${escapeHtml(msg)}</p></div>`;
         return;
     }
 
-    container.innerHTML = filtered.map(response =>
+    container.innerHTML = list.map(response =>
         `<div class="saved-item">
             <div class="saved-item-actions">
                 <button data-action="load" data-id="${escapeHtml(response.id)}" title="تحميل" aria-label="تحميل الرد المحفوظ">📂</button>
                 <button data-action="delete" data-id="${escapeHtml(response.id)}" title="حذف" aria-label="حذف الرد المحفوظ">🗑️</button>
             </div>
+            <div class="saved-item-meta">${savedItemBadges(response)}</div>
             <div class="saved-item-preview">${escapeHtml(response.preview)}${response.text.length > response.preview.length ? '…' : ''}</div>
-            <div class="saved-item-date">${escapeHtml(response.date)}</div>
+            <div class="saved-item-footer">
+                <span class="saved-item-date">${escapeHtml(response.date)}</span>
+                ${statusSelect(response)}
+            </div>
         </div>`,
     ).join('');
+}
+
+// تعبئة قائمة تصفية الفئات من فئات الردود المحفوظة فعلاً، مع الحفاظ على الاختيار الحالي.
+export function syncArchiveCategoryOptions(savedResponses, selected = 'all') {
+    const select = document.getElementById('archiveCategoryFilter');
+    if (!select) return;
+    const categories = Array.from(new Set(savedResponses.map(r => r.category).filter(Boolean)));
+    let html = '<option value="all">كل الفئات</option>';
+    categories.forEach(cat => {
+        html += `<option value="${escapeHtml(cat)}"${cat === selected ? ' selected' : ''}>${escapeHtml(cat)}</option>`;
+    });
+    select.innerHTML = html;
+    select.value = categories.includes(selected) ? selected : 'all';
 }
 
 export function renderStats(stats, articlesCount) {
@@ -276,6 +328,8 @@ export function renderStats(stats, articlesCount) {
         week: document.getElementById('statWeek'),
         total: document.getElementById('statTotal'),
         topCategory: document.getElementById('statTopCategory'),
+        open: document.getElementById('statOpen'),
+        complaints: document.getElementById('statComplaints'),
     };
     if (els.articles) els.articles.textContent = formatNumber(articlesCount);
     if (els.saved) els.saved.textContent = formatNumber(stats.total);
@@ -283,4 +337,6 @@ export function renderStats(stats, articlesCount) {
     if (els.week) els.week.textContent = formatNumber(stats.week);
     if (els.total) els.total.textContent = formatNumber(stats.total);
     if (els.topCategory) els.topCategory.textContent = stats.topCategory || '—';
+    if (els.open) els.open.textContent = formatNumber(stats.open || 0);
+    if (els.complaints) els.complaints.textContent = formatNumber((stats.byTone && stats.byTone.complaint) || 0);
 }

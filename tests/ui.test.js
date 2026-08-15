@@ -18,8 +18,10 @@ globalThis.localStorage = dom.window.localStorage;
 
 const {
     escapeHtml,
+    renderAnalysis,
     renderArticles,
     renderSavedResponses,
+    syncArchiveCategoryOptions,
     renderCategoryFilter,
     renderTemplates,
     openModal,
@@ -34,6 +36,9 @@ function resetDom() {
     document.body.innerHTML = `
         <main id="mainContainer"></main>
         <div id="articlesContainer"></div>
+        <div id="analysisBox"></div>
+        <div id="analysisContent"></div>
+        <select id="archiveCategoryFilter"><option value="all">كل الفئات</option></select>
         <div id="savedList"></div>
         <div id="categoryFilter"></div>
         <div id="templatesGrid"></div>
@@ -119,6 +124,57 @@ test('renderSavedResponses/renderTemplates: تهريب المعرّفات وال
 
     renderTemplates([{ id: 1, icon: '📄', name: '<img src=x onerror=y>' }]);
     assert.equal(document.querySelector('#templatesGrid img'), null);
+});
+
+test('renderSavedResponses: يعرض شارات النبرة والاستعجال وقائمة الحالة بالخيار الصحيح', () => {
+    renderSavedResponses([
+        { id: 1, text: 'شكوى محفوظة', preview: 'شكوى محفوظة', date: '١', tone: 'complaint', urgent: true, status: 'in-progress', category: 'شكوى من تأخر الرد' },
+        { id: 2, text: 'رد قديم بلا حقول', preview: 'رد قديم بلا حقول', date: '٢' },
+    ]);
+    const items = document.querySelectorAll('.saved-item');
+    assert.ok(items[0].querySelector('.tag.tone-complaint'));
+    assert.ok(items[0].querySelector('.tag.urgent'));
+    const select = items[0].querySelector('select[data-action="status"]');
+    assert.equal(select.value, 'in-progress');
+    // العنصر القديم: بلا شارات، وحالته الافتراضية «جديد».
+    assert.equal(items[1].querySelector('.tag.tone-complaint'), null);
+    assert.equal(items[1].querySelector('select[data-action="status"]').value, 'new');
+});
+
+test('renderSavedResponses: القائمة المصفاة تعرض رسالة «لا نتائج» مع وجود ردود محفوظة', () => {
+    renderSavedResponses([{ id: 1, text: 'أ', preview: 'أ', date: '١' }], []);
+    assert.ok(document.querySelector('.empty-state').textContent.includes('لا توجد نتائج مطابقة'));
+});
+
+test('renderAnalysis: يعرض label القادم من JSON ولا يدّعي «محايدة» لنبرة غير معروفة', () => {
+    renderAnalysis({
+        tone: { primary: 'gratitude', label: 'شكر وثناء', urgent: false },
+        detectedIntents: [], entities: [], foundKeywords: [],
+    });
+    assert.ok(document.getElementById('analysisContent').textContent.includes('شكر وثناء'));
+
+    // نبرة غير معروفة بلا label: يظهر مفتاحها بدل «محايدة».
+    renderAnalysis({
+        tone: { primary: 'gratitude', urgent: false },
+        detectedIntents: [], entities: [], foundKeywords: [],
+    });
+    assert.ok(document.getElementById('analysisContent').textContent.includes('gratitude'));
+    assert.ok(!document.getElementById('analysisContent').textContent.includes('محايدة'));
+});
+
+test('syncArchiveCategoryOptions: يبني الفئات من الردود ويحافظ على الاختيار', () => {
+    const saved = [
+        { id: 1, category: 'استفسار عن موعد جلسة' },
+        { id: 2, category: 'شكوى من تأخر الرد' },
+        { id: 3, category: null },
+    ];
+    syncArchiveCategoryOptions(saved, 'شكوى من تأخر الرد');
+    const select = document.getElementById('archiveCategoryFilter');
+    assert.equal(select.options.length, 3, 'كل الفئات + فئتان');
+    assert.equal(select.value, 'شكوى من تأخر الرد');
+    // فئة محذوفة من الأرشيف تعيد الاختيار إلى «الكل».
+    syncArchiveCategoryOptions([{ id: 1, category: 'أخرى' }], 'شكوى من تأخر الرد');
+    assert.equal(select.value, 'all');
 });
 
 test('renderCategoryFilter: يحافظ على الفئة النشطة بعد إعادة البناء', () => {

@@ -23,6 +23,8 @@ import {
     importResponses,
     clearAllResponses,
     computeStats,
+    filterSavedResponses,
+    setResponseStatus,
     getRetentionDays,
     setRetentionDays,
     takeLastPurgedCount,
@@ -34,6 +36,7 @@ import {
     renderTemplates,
     renderCategoryFilter,
     renderSavedResponses,
+    syncArchiveCategoryOptions,
     renderStats,
     openModal,
     closeModal,
@@ -66,7 +69,9 @@ const app = {
     selectedArticleIds: [],
     savedResponses: [],
     currentFilter: 'all',
+    archiveFilters: { query: '', status: 'all', tone: 'all', category: 'all' },
     lastAnalysisIntent: null,
+    lastAnalysisTone: null,
     lastEntities: [],
     // آخر نتائج تحليل مرتّبة بالصلة. تُحفظ حتى لا تضيع عند مسح خانة البحث.
     lastRelevantArticles: null,
@@ -121,7 +126,7 @@ async function start() {
 
     renderTemplates(app.templates);
     renderCategoryFilter(store.getCategories(), app.currentFilter);
-    renderSavedResponses(app.savedResponses);
+    renderFilteredArchive();
     refreshStats();
     syncRetentionSelect();
 
@@ -170,9 +175,15 @@ function refreshStats() {
     renderStats(stats, store.getArticles().length);
 }
 
+// يعيد عرض الأرشيف وفق التصفية الحالية دون إعادة قراءة التخزين.
+function renderFilteredArchive() {
+    syncArchiveCategoryOptions(app.savedResponses, app.archiveFilters.category);
+    renderSavedResponses(app.savedResponses, filterSavedResponses(app.savedResponses, app.archiveFilters));
+}
+
 function refreshSavedList() {
     app.savedResponses = loadSavedResponses();
-    renderSavedResponses(app.savedResponses, document.getElementById('savedSearch').value);
+    renderFilteredArchive();
     refreshStats();
 }
 
@@ -230,8 +241,19 @@ function bindEvents() {
     document.getElementById('articleSearch').addEventListener('input', searchArticles);
 
     document.getElementById('savedSearch').addEventListener('input', (e) => {
-        renderSavedResponses(app.savedResponses, e.target.value);
+        app.archiveFilters.query = e.target.value;
+        renderFilteredArchive();
     });
+
+    const bindArchiveFilter = (id, key) => {
+        document.getElementById(id)?.addEventListener('change', (e) => {
+            app.archiveFilters[key] = e.target.value;
+            renderFilteredArchive();
+        });
+    };
+    bindArchiveFilter('archiveStatusFilter', 'status');
+    bindArchiveFilter('archiveToneFilter', 'tone');
+    bindArchiveFilter('archiveCategoryFilter', 'category');
 
     document.getElementById('categoryFilter').addEventListener('click', (e) => {
         const btn = e.target.closest('.category-btn');
@@ -266,6 +288,20 @@ function bindEvents() {
         const id = Number(btn.dataset.id);
         if (btn.dataset.action === 'load') loadSavedResponseToOutput(id);
         else if (btn.dataset.action === 'delete') deleteSavedResponse(id);
+    });
+
+    // تغيير حالة المعالجة من القائمة المنسدلة على بطاقة الرد (مستمع مفوَّض).
+    document.getElementById('savedList').addEventListener('change', (e) => {
+        const select = e.target.closest('select[data-action="status"]');
+        if (!select) return;
+        const updated = setResponseStatus(Number(select.dataset.id), select.value);
+        if (!updated) {
+            showToast('تعذّر تحديث الحالة');
+            refreshSavedList();
+            return;
+        }
+        refreshSavedList();
+        showToast('تم تحديث حالة الرد');
     });
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -368,6 +404,7 @@ function analyzeMessage() {
     renderArticles(relevantArticles, app.selectedArticleIds);
 
     app.lastAnalysisIntent = detectedIntents[0] || null;
+    app.lastAnalysisTone = tone;
     app.lastEntities = entities;
     app.lastRelevantArticles = relevantArticles;
     app.currentFilter = 'all';
@@ -375,7 +412,7 @@ function analyzeMessage() {
 
     const response = suggestResponse(
         message, relevantArticles, detectedIntents, entities,
-        app.language, app.defaultResponse,
+        app.language, app.defaultResponse, tone,
     );
     setOutput(response);
 
@@ -444,7 +481,11 @@ function handleSave() {
         return;
     }
     const category = app.lastAnalysisIntent ? app.lastAnalysisIntent.label : null;
-    if (!addResponse(output, category)) {
+    const extras = {
+        tone: app.lastAnalysisTone ? app.lastAnalysisTone.primary : null,
+        urgent: Boolean(app.lastAnalysisTone && app.lastAnalysisTone.urgent),
+    };
+    if (!addResponse(output, category, extras)) {
         showToast('تعذّر الحفظ: امتلأت مساحة التخزين، احذف بعض الردود القديمة');
         return;
     }
@@ -472,6 +513,7 @@ function clearInput() {
     document.getElementById('userResponse').value = '';
     setOutput('');
     document.getElementById('analysisBox').classList.remove('show');
+    app.lastAnalysisTone = null;
     app.selectedArticleIds = [];
     document.querySelectorAll('.article-item').forEach(el => {
         el.classList.remove('selected');

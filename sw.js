@@ -6,7 +6,7 @@
 //  • المستند وملفات البيانات → stale-while-revalidate: يُعرض المخزّن فوراً ويُحدَّث بالخلفية.
 // كان «الشبكة أولاً» للكل يعني انتظار الشبكة في كل زيارة حتى مع وجود نسخة صالحة.
 
-const CACHE_NAME = 'legal-assistant-v2';
+const CACHE_NAME = 'legal-assistant-v3';
 
 const CORE_ASSETS = [
     './',
@@ -23,6 +23,7 @@ const CORE_ASSETS = [
     './js/safe-storage.js',
     './js/format.js',
     './js/analyzer.js',
+    './js/matcher.js',
     './js/response.js',
     './js/storage.js',
     './js/ui.js',
