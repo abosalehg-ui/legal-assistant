@@ -14,10 +14,25 @@ export const MAX_SAVED = 500;
 export const DEFAULT_RETENTION_DAYS = 30;
 export const RETENTION_OPTIONS = [7, 30, 90, 0];
 
+// حالات معالجة الرد المحفوظ (CRM مصغّر): تتيح للموظف تمييز ما أُنجز وما ينتظر.
+export const STATUSES = ['new', 'in-progress', 'closed'];
+export const DEFAULT_STATUS = 'new';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function itemTimestamp(item) {
     return item.timestamp || item.id || 0;
+}
+
+// ترحيل عند القراءة: عناصر محفوظة قبل إضافة حقول الحالة/النبرة تحصل هنا على
+// افتراضات آمنة، وتُثبَّت في التخزين مع أول كتابة تالية. لا حاجة لترحيل مُرقَّم.
+export function normalizeSavedItem(item) {
+    return {
+        ...item,
+        status: STATUSES.includes(item.status) ? item.status : DEFAULT_STATUS,
+        tone: typeof item.tone === 'string' && item.tone ? item.tone : null,
+        urgent: item.urgent === true,
+    };
 }
 
 export function getRetentionDays() {
@@ -59,7 +74,7 @@ export function loadSavedResponses() {
         lastPurgedCount += purged;
         writeJson(KEY, list);
     }
-    return list;
+    return list.map(normalizeSavedItem);
 }
 
 // تعيد العنصر المحفوظ، أو null إذا تعذّرت الكتابة.
@@ -73,6 +88,7 @@ export function addResponse(text, category = null, extras = {}) {
         category,
         tone: typeof extras.tone === 'string' && extras.tone ? extras.tone : null,
         urgent: extras.urgent === true,
+        status: DEFAULT_STATUS,
         date: formatDate(now),
         timestamp: now,
         preview: text.substring(0, 100),
@@ -80,6 +96,17 @@ export function addResponse(text, category = null, extras = {}) {
     list.unshift(item);
     if (list.length > MAX_SAVED) list.length = MAX_SAVED;
     return writeJson(KEY, list) ? item : null;
+}
+
+// تغيّر حالة معالجة رد محفوظ. تعيد القائمة المحدّثة،
+// أو null لحالة غير صالحة أو معرف غير موجود أو فشل كتابة.
+export function setResponseStatus(id, status) {
+    if (!STATUSES.includes(status)) return null;
+    const list = loadSavedResponses();
+    const item = list.find(r => r.id === id);
+    if (!item) return null;
+    item.status = status;
+    return writeJson(KEY, list) ? list : null;
 }
 
 export function deleteResponse(id) {
@@ -110,16 +137,17 @@ export function importResponses(items) {
         const id = typeof raw.id === 'number' ? raw.id : Date.now() + added;
         if (seen.has(id)) continue;
         seen.add(id);
-        list.push({
+        list.push(normalizeSavedItem({
             id,
             text: raw.text,
             category: typeof raw.category === 'string' ? raw.category : null,
-            tone: typeof raw.tone === 'string' && raw.tone ? raw.tone : null,
-            urgent: raw.urgent === true,
+            tone: raw.tone,
+            urgent: raw.urgent,
+            status: raw.status,
             date: typeof raw.date === 'string' ? raw.date : '',
             timestamp: typeof raw.timestamp === 'number' ? raw.timestamp : id,
             preview: raw.text.substring(0, 100),
-        });
+        }));
         added++;
     }
 
@@ -136,6 +164,8 @@ export function computeStats(savedResponses) {
     let today = 0;
     let week = 0;
     const categoryCount = {};
+    const byTone = {};
+    const byStatus = {};
 
     savedResponses.forEach(r => {
         const ts = itemTimestamp(r);
@@ -144,6 +174,11 @@ export function computeStats(savedResponses) {
         if (r.category) {
             categoryCount[r.category] = (categoryCount[r.category] || 0) + 1;
         }
+        // العناصر القديمة بلا نبرة تُحسب «محايدة» حتى لا تختفي من التوزيع.
+        const tone = r.tone || 'neutral';
+        byTone[tone] = (byTone[tone] || 0) + 1;
+        const status = STATUSES.includes(r.status) ? r.status : DEFAULT_STATUS;
+        byStatus[status] = (byStatus[status] || 0) + 1;
     });
 
     const topCategory = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0];
@@ -153,5 +188,20 @@ export function computeStats(savedResponses) {
         today,
         week,
         topCategory: topCategory ? topCategory[0] : '—',
+        byTone,
+        byStatus,
+        // «مفتوحة» = كل ما لم يُغلق بعد — رقم المتابعة اليومي للموظف.
+        open: (byStatus['new'] || 0) + (byStatus['in-progress'] || 0),
     };
+}
+
+// تصفية الأرشيف — دالة نقية قابلة للاختبار بلا DOM. 'all' تعني بلا تصفية للحقل.
+export function filterSavedResponses(list, { query = '', status = 'all', tone = 'all', category = 'all' } = {}) {
+    const q = query.trim().toLowerCase();
+    return list.filter(r =>
+        (!q || r.text.toLowerCase().includes(q)) &&
+        (status === 'all' || (r.status || DEFAULT_STATUS) === status) &&
+        (tone === 'all' || (r.tone || 'neutral') === tone) &&
+        (category === 'all' || r.category === category),
+    );
 }

@@ -398,6 +398,31 @@ input[type="text"], input[type="url"] {
     outline-offset: 2px;
 }
 
+/* صف تصفية الأرشيف: حالة/نوع/فئة بجانب البحث. */
+.archive-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.archive-filters select {
+    flex: 1 1 140px;
+    padding: 0.5rem 0.75rem;
+    min-height: 44px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.85rem;
+}
+
+.archive-filters select:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 .saved-list { max-height: 300px; overflow-y: auto; }
 
 .saved-item {
@@ -421,7 +446,43 @@ input[type="text"], input[type="url"] {
     padding-inline-end: 6rem;
 }
 
-.saved-item-date { font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem; }
+.saved-item-date { font-size: 0.75rem; color: var(--text-light); }
+
+/* شارات النبرة/الفئة على بطاقة الرد المحفوظ — مساحة لزرّي الإجراء كما في المعاينة. */
+.saved-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+    padding-inline-end: 96px;
+}
+.saved-item-meta:empty { display: none; }
+.saved-item-meta .tag { font-size: 0.7rem; padding: 0.15rem 0.55rem; }
+
+.saved-item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.saved-status {
+    padding: 0.3rem 0.5rem;
+    min-height: 36px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.78rem;
+}
+.saved-status:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* تلوين حدود القائمة بحسب الحالة: تمييز بصري سريع دون الاعتماد على اللون وحده (النص موجود). */
+.saved-status.status-new { border-color: var(--tone-inquiry); }
+.saved-status.status-in-progress { border-color: var(--tone-urgent); }
+.saved-status.status-closed { border-color: var(--border); color: var(--text-light); }
 
 .saved-item-actions {
     position: absolute;

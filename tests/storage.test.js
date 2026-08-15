@@ -26,12 +26,17 @@ const {
     importResponses,
     clearAllResponses,
     computeStats,
+    filterSavedResponses,
+    setResponseStatus,
+    normalizeSavedItem,
     applyRetention,
     getRetentionDays,
     setRetentionDays,
     takeLastPurgedCount,
     MAX_SAVED,
     DEFAULT_RETENTION_DAYS,
+    STATUSES,
+    DEFAULT_STATUS,
 } = await import('../js/storage.js');
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -202,6 +207,96 @@ test('getRetentionDays/setRetentionDays: افتراضي سليم ويرفض ال
     // قيمة غير موجودة في الخيارات ترجع للافتراضي بدل تعطيل السياسة
     assert.equal(setRetentionDays(999), DEFAULT_RETENTION_DAYS);
     assert.equal(getRetentionDays(), DEFAULT_RETENTION_DAYS);
+});
+
+test('الترحيل عند القراءة: عنصر قديم بلا حقول الحالة يحصل على افتراضات آمنة', () => {
+    const now = Date.now();
+    // عنصر بالبنية القديمة تماماً (قبل إضافة tone/urgent/status).
+    globalThis.localStorage.setItem('savedResponses', JSON.stringify([
+        { id: now, text: 'قديم', category: 'فئة', date: '١', timestamp: now, preview: 'قديم' },
+    ]));
+    const item = loadSavedResponses()[0];
+    assert.equal(item.status, DEFAULT_STATUS);
+    assert.equal(item.tone, null);
+    assert.equal(item.urgent, false);
+    assert.equal(item.text, 'قديم', 'بقية الحقول لم تُمس');
+});
+
+test('normalizeSavedItem: يصحح القيم الشاذة ويبقي الصالح', () => {
+    const ok = normalizeSavedItem({ id: 1, status: 'closed', tone: 'inquiry', urgent: true });
+    assert.equal(ok.status, 'closed');
+    assert.equal(ok.tone, 'inquiry');
+    const bad = normalizeSavedItem({ id: 2, status: 'مغلق', tone: '', urgent: 1 });
+    assert.equal(bad.status, DEFAULT_STATUS);
+    assert.equal(bad.tone, null);
+    assert.equal(bad.urgent, false);
+});
+
+test('setResponseStatus: يغيّر الحالة ويثبّتها ويرفض غير الصالح', () => {
+    const item = addResponse('رد', 'فئة');
+    assert.equal(item.status, DEFAULT_STATUS);
+    const updated = setResponseStatus(item.id, 'in-progress');
+    assert.ok(updated);
+    assert.equal(findResponse(item.id).status, 'in-progress');
+    // مثبّتة في التخزين لا في الذاكرة فقط.
+    assert.equal(JSON.parse(globalThis.localStorage.getItem('savedResponses'))[0].status, 'in-progress');
+    assert.equal(setResponseStatus(item.id, 'not-a-status'), null);
+    assert.equal(setResponseStatus(-999, 'closed'), null, 'معرف غير موجود');
+    globalThis.__quotaFull = true;
+    assert.equal(setResponseStatus(item.id, 'closed'), null, 'فشل الكتابة لا يمر صامتاً');
+});
+
+test('importResponses: الحالة الصالحة تُحفظ والشاذة تعود للافتراضي (round-trip التصدير)', () => {
+    const now = Date.now();
+    importResponses([
+        { id: now - 1000, text: 'أ', status: 'closed', tone: 'complaint', urgent: true },
+        { id: now - 2000, text: 'ب', status: 'whatever' },
+    ]);
+    assert.equal(findResponse(now - 1000).status, 'closed');
+    assert.equal(findResponse(now - 2000).status, DEFAULT_STATUS);
+    // ما يُصدَّر (القائمة المحمّلة) يحمل الحقول الجديدة فيصمد عبر تصدير→استيراد.
+    const exported = loadSavedResponses();
+    globalThis.localStorage.clear();
+    importResponses(exported);
+    assert.equal(findResponse(now - 1000).status, 'closed');
+    assert.equal(findResponse(now - 1000).tone, 'complaint');
+    assert.equal(findResponse(now - 1000).urgent, true);
+});
+
+test('filterSavedResponses: توليفات النص والحالة والنبرة والفئة', () => {
+    const list = [
+        { id: 1, text: 'تأخر الرد على طلبي', status: 'new', tone: 'complaint', category: 'شكوى من تأخر الرد' },
+        { id: 2, text: 'استفسار عن موعد', status: 'closed', tone: 'inquiry', category: 'استفسار عن موعد جلسة' },
+        { id: 3, text: 'رد قديم بلا حقول' },
+    ];
+    assert.equal(filterSavedResponses(list, {}).length, 3, 'بلا تصفية يعيد الكل');
+    assert.deepEqual(filterSavedResponses(list, { status: 'new' }).map(r => r.id), [1, 3], 'القديم يُعامل كجديد');
+    assert.deepEqual(filterSavedResponses(list, { tone: 'inquiry' }).map(r => r.id), [2]);
+    assert.deepEqual(filterSavedResponses(list, { tone: 'neutral' }).map(r => r.id), [3], 'بلا نبرة = محايدة');
+    assert.deepEqual(filterSavedResponses(list, { query: 'تأخر' }).map(r => r.id), [1]);
+    assert.deepEqual(
+        filterSavedResponses(list, { query: 'الرد', status: 'new', tone: 'complaint' }).map(r => r.id),
+        [1],
+        'التصفيات تتقاطع',
+    );
+    assert.deepEqual(filterSavedResponses(list, { category: 'استفسار عن موعد جلسة' }).map(r => r.id), [2]);
+});
+
+test('computeStats: توزيع النبرة والحالة وعدّاد المفتوح', () => {
+    const now = Date.now();
+    const stats = computeStats([
+        { id: 1, timestamp: now, tone: 'complaint', status: 'new' },
+        { id: 2, timestamp: now, tone: 'complaint', status: 'in-progress' },
+        { id: 3, timestamp: now, tone: 'inquiry', status: 'closed' },
+        { id: 4, timestamp: now },
+    ]);
+    assert.equal(stats.byTone.complaint, 2);
+    assert.equal(stats.byTone.inquiry, 1);
+    assert.equal(stats.byTone.neutral, 1, 'بلا نبرة يُحسب محايداً');
+    assert.equal(stats.byStatus['new'], 2, 'بلا حالة يُحسب جديداً');
+    assert.equal(stats.byStatus['closed'], 1);
+    assert.equal(stats.open, 3, 'جديد + قيد المعالجة');
+    assert.ok(STATUSES.includes(DEFAULT_STATUS));
 });
 
 test('computeStats: اليوم والأسبوع والفئة الأكثر تكراراً', () => {
