@@ -1,6 +1,8 @@
 [
   { "text": "السلام عليكم متى موعد الجلسة القادمة؟", "tone": "inquiry", "urgent": false, "intentId": "session-date" },
   { "text": "وش موعد جلستي في محكمة الرياض؟", "tone": "inquiry", "urgent": false, "intentId": "session-date" },
+  { "text": "متى موعد الجلسة", "tone": "inquiry", "urgent": false, "intentId": "session-date" },
+  { "text": "وش تاريخ جلسة القضية؟", "tone": "inquiry", "urgent": false, "intentId": "session-date" },
   { "text": "ابغى اعرف موعد جلستنا الجاية بالضبط", "tone": "inquiry", "urgent": false, "intentId": "session-date" },
   { "text": "لو سمحتم حددوا لنا موعد جلسة قريب", "tone": "request", "urgent": false, "intentId": "session-date" },
   { "text": "متى تنعقد الجلسة القادمة في الدعوى؟", "tone": "inquiry", "urgent": false, "intentId": "session-date" },

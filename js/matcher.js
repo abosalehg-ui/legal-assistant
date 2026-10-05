@@ -47,12 +47,27 @@ const SUFFIXES = [
 // القرار يُتخذ من العبارة الخام قبل التطبيع لا بعده: التطبيع يوحّد «ة» و«ه» في حرف
 // واحد، فلو حُكم بعده لانقلبت كل كلمة تنتهي بهاء أصلية إلى تاء — و«ليه» صارت تطابق
 // «ليت»، و«فيه» تطابق «فيت». الهاء الأصلية لا تتصرّف، والتاء المربوطة وحدها تتصرّف.
-function toAlternative(key, inflect) {
-    const body = escapeRegExp(key).replace(/ +/g, '\\s+');
+function toAlternative(key, inflect, innerArticle) {
+    const words = key.split(/ +/).map(escapeRegExp);
+    if (innerArticle) {
+        for (let i = 1; i < words.length; i++) words[i] = withOptionalArticle(words[i]);
+    }
+    const body = words.join('\\s+');
     if (inflect && key.length > 2 && key.endsWith('ه')) {
         return body.slice(0, -1) + '(?:ه|ات|ت)';
     }
     return body;
+}
+
+// innerArticle: «ال» التعريف اختيارية على كل كلمة بعد الأولى في العبارة متعددة الكلمات.
+// سابقة الكلمة الأولى تتكفّل بها prefixGroup، أما ما بعدها فكان يُطابَق حرفياً: المفتاح
+// «موعد جلسة» لا يطابق «متى موعد الجلسة» — أشيع صيغة للسؤال — فتسقط الرسالة بلا تصنيف.
+// الحكم متماثل: «تاريخ الجلسة» في البيانات تطابق «تاريخ جلسة» في الرسالة كذلك.
+// كلمتان من حرفين أو أقل («عن»، «في») تُترك كما هي: لا تعريف عليها، والتبادل يضيف ضجيجاً.
+function withOptionalArticle(word) {
+    const stem = word.startsWith('ال') && word.length > 4 ? word.slice(2) : word;
+    if (stem.length <= 2) return word;
+    return `(?:ال)?${stem}`;
 }
 
 // prefix:
@@ -73,11 +88,16 @@ function prefixGroup(prefix) {
 // لذلك الخيار معطّل افتراضياً ويُفعَّل في المحلل وحده.
 // normalize: دالة التطبيع تُمرَّر إلى هنا بدل تطبيق النتيجة مسبقاً، لأن بناء التبادل
 // يحتاج العبارة الخام والمطبَّعة معاً (انظر toAlternative).
-export function compileMatcher(phrases, { prefix = false, suffix = false, normalize = null } = {}) {
+export function compileMatcher(
+    phrases,
+    { prefix = false, suffix = false, innerArticle = false, normalize = null } = {},
+) {
     const entries = Array.from(phrases, raw => ({ raw, key: normalize ? normalize(raw) : raw }));
     if (entries.length === 0) return null;
     entries.sort((a, b) => b.key.length - a.key.length);
-    const alternatives = entries.map(e => toAlternative(e.key, suffix && e.raw.endsWith('ة'))).join('|');
+    const alternatives = entries
+        .map(e => toAlternative(e.key, suffix && e.raw.endsWith('ة'), innerArticle))
+        .join('|');
     const suffixes = suffix ? `((?:${SUFFIXES.join('|')}){0,2})` : '()';
     return new RegExp(
         `(^|[^${ARABIC_LETTER}])${prefixGroup(prefix)}(${alternatives})${suffixes}(?=[^${ARABIC_LETTER}]|$)`,
@@ -88,28 +108,56 @@ export function compileMatcher(phrases, { prefix = false, suffix = false, normal
 // مجموعة العبارات *المختلفة* من القائمة التي ظهرت في النص (تكرار العبارة نفسها يُعدّ
 // مرة واحدة). فراغ العبارة المطابقة يُوحَّد ليطابق مفتاحها الأصلي، والصيغة المصرّفة
 // تُردّ إلى المفتاح المجرد («جلسات» ← «جلسه») حتى لا تُحسب صيغتان لكلمة واحدة مرتين.
+//
+// المطابقات متداخلة: يُبحث عن أطول عبارة تبدأ عند *كل* كلمة، لا عن مطابقات منفصلة فقط.
+// matchAll يستهلك ما طابقه، ففي «كم رسوم رفع الدعوى» تأكل «كم رسوم» كلمة «رسوم» فلا تجد
+// العبارة الأدق «رسوم رفع الدعوى» بدايتها، ويتعادل موضوع الرسوم مع «رفع دعوى». بعد كل
+// مطابقة يُستأنف البحث من الحرف التالي لبداية الكلمة المطابقة؛ وحد الكلمة في أول التعبير
+// يضمن أن المطابقة التالية تبدأ عند الكلمة التالية لا في وسط كلمة.
 export function collectMatches(text, regex, keys) {
     const seen = new Set();
     if (!regex) return seen;
-    const lookup = keys ? new Set(keys) : null;
-    for (const m of text.matchAll(regex)) {
+    const canonical = keys ? canonicalizer(keys) : null;
+    regex.lastIndex = 0;
+    let m;
+    while ((m = regex.exec(text)) !== null) {
         const matched = m[3].replace(/\s+/g, ' ');
-        seen.add(lookup ? canonicalKey(matched, lookup) : matched);
+        seen.add(canonical ? canonical(matched) : matched);
+        regex.lastIndex = m.index + m[1].length + 1;
     }
     return seen;
 }
 
-// «جلسات» و«جلست» ليستا مفتاحين في البيانات — المفتاح «جلسه». تُجرَّب الصيغ الثلاث
-// للتاء المربوطة فقط، فأي تصريف آخر يعود بالنص كما هو.
-function canonicalKey(matched, lookup) {
-    if (lookup.has(matched)) return matched;
-    for (const tail of ['ات', 'ت']) {
-        if (matched.endsWith(tail)) {
-            const candidate = matched.slice(0, -tail.length) + 'ه';
-            if (lookup.has(candidate)) return candidate;
-        }
+// «ال» على كلمة غير أولى تُتجاهل في المقارنة (انظر withOptionalArticle).
+function withoutInnerArticle(phrase) {
+    return phrase
+        .split(' ')
+        .map((word, i) => (i > 0 && word.startsWith('ال') && word.length > 4 ? word.slice(2) : word))
+        .join(' ');
+}
+
+// يردّ العبارة المطابقة إلى مفتاحها في البيانات: «جلسات» و«جلست» ← «جلسه» (التاء المربوطة
+// المصرّفة)، و«موعد الجلسه» ← «موعد جلسه» («ال» على كلمة داخلية). أي صيغة أخرى تعود كما هي.
+function canonicalizer(keys) {
+    const exact = new Set(keys);
+    const byArticleless = new Map();
+    for (const key of keys) {
+        const loose = withoutInnerArticle(key);
+        if (!byArticleless.has(loose)) byArticleless.set(loose, key);
     }
-    return matched;
+    const find = candidate =>
+        exact.has(candidate) ? candidate : byArticleless.get(withoutInnerArticle(candidate));
+    return matched => {
+        const direct = find(matched);
+        if (direct) return direct;
+        for (const tail of ['ات', 'ت']) {
+            if (matched.endsWith(tail)) {
+                const key = find(matched.slice(0, -tail.length) + 'ه');
+                if (key) return key;
+            }
+        }
+        return matched;
+    };
 }
 
 export function countDistinctMatches(text, regex, keys) {
@@ -127,6 +175,11 @@ export function hasMatch(text, regex) {
 // جديدة ([...arr]) في كل استدعاء وإلا أُعيدت الترجمة صامتاً في كل مرة.
 const matcherCache = new WeakMap();
 
+// كل خيار يغيّر شكل التعبير يجب أن يدخل مفتاح الكاش، وإلا أعاد الكاش تعبيراً بُني بخيارات أخرى.
+function optsKey(opts) {
+    return `${opts.prefix || false}|${opts.suffix || false}|${opts.innerArticle || false}`;
+}
+
 export function getCachedMatcher(phrases, normalizeFn, opts = {}) {
     if (!Array.isArray(phrases) || phrases.length === 0) return null;
     let byOpts = matcherCache.get(phrases);
@@ -134,7 +187,7 @@ export function getCachedMatcher(phrases, normalizeFn, opts = {}) {
         byOpts = new Map();
         matcherCache.set(phrases, byOpts);
     }
-    const key = `${opts.prefix || false}|${opts.suffix || false}`;
+    const key = optsKey(opts);
     let regex = byOpts.get(key);
     if (regex === undefined) {
         regex = compileMatcher(phrases, { ...opts, normalize: normalizeFn });
@@ -150,7 +203,7 @@ const SINGLE_CACHE_LIMIT = 500;
 
 export function getPhraseMatcher(phrase, opts = {}) {
     if (!phrase) return null;
-    const key = `${opts.prefix || false}|${opts.suffix || false}|${phrase}`;
+    const key = `${optsKey(opts)}|${phrase}`;
     let regex = singleCache.get(key);
     if (regex === undefined) {
         // حدّ بسيط يمنع نمو الكاش بلا سقف في جلسة طويلة؛ الكلمات المتكررة تُعاد سريعاً.
