@@ -263,3 +263,12 @@ test('findRelevantArticles: «حكم» لا ترجّح مادة لا تذكر إ
     assert.equal(results.length, 1, 'المادة التي لا تذكر إلا «المحكمة» تخرج من النتائج');
     assert.equal(results[0].id, '2');
 });
+
+test('detectIntent: «متى موعد الجلسة» تُصنَّف بالبيانات الحقيقية (كانت بلا تصنيف إطلاقاً)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const intents = JSON.parse(readFileSync(new URL('../data/intents.json', import.meta.url), 'utf8'));
+    for (const message of ['متى موعد الجلسة', 'متى موعد الجلسة؟ ضروري', 'وش تاريخ جلسة القضية']) {
+        const [top] = detectIntent(normalizeArabic(message), intents.patterns);
+        assert.equal(top && top.id, 'session-date', message);
+    }
+});

@@ -5,7 +5,7 @@ import { getCachedMatcher, getPhraseMatcher, collectMatches, hasMatch } from './
 // سوابق العطف/الجر و«ال» التعريف مقبولة قبل كلمات التصنيف، واللواحق المتصلة كذلك:
 // الكلمات تُكتب مجردة في data/intents.json وتَرِد في الرسائل بصيغة «والجلسة» و«بالحكم»
 // و«طلبكم» و«قضيتهم». هذا الخيار هو الفرق بين قائمة كلمات تُكتب مرة وقائمة تُطارَد بلا نهاية.
-const MATCH_OPTS = { prefix: 'clitic+al', suffix: true };
+const MATCH_OPTS = { prefix: 'clitic+al', suffix: true, innerArticle: true };
 
 // الأرقام العربية والفارسية تُردّ إلى اللاتينية: المستفيد يكتب «طلب رقم ٤٥٢١٩٨٧»
 // والمستخرِج يبحث عن \d — بلا هذا التطبيع يضيع رقم الطلب من كل رسالة مكتوبة بلوحة عربية.

@@ -9,6 +9,7 @@ import {
     hasMatch,
     getCachedMatcher,
     getPhraseMatcher,
+    collectMatches,
 } from '../js/matcher.js';
 import { normalizeArabic } from '../js/analyzer.js';
 
@@ -128,4 +129,46 @@ test('getPhraseMatcher: كاش بالنص لا بالهوية — نفس الع�
     const b = getPhraseMatcher('تبليغ', { prefix: 'clitic+al', suffix: true, normalize: normalizeArabic });
     assert.equal(a, b);
     assert.equal(getPhraseMatcher('', {}), null);
+});
+
+const ANALYZER_OPTS = { prefix: 'clitic+al', suffix: true, innerArticle: true, normalize: normalizeArabic };
+
+test('innerArticle: «ال» اختيارية على الكلمات بعد الأولى — «موعد جلسة» تطابق «متى موعد الجلسة»', () => {
+    const rx = compileMatcher(['موعد جلسة'], ANALYZER_OPTS);
+    assert.equal(hasMatch(normalizeArabic('متى موعد الجلسة'), rx), true);
+    assert.equal(hasMatch(normalizeArabic('متى موعد جلسة القضية'), rx), true);
+    assert.equal(hasMatch(normalizeArabic('موعد جلستي'), rx), true, 'التصريف ما زال يعمل');
+    // متماثلة: «ال» في المفتاح لا تُلزم الرسالة بها.
+    const withArticle = compileMatcher(['تاريخ الجلسة'], ANALYZER_OPTS);
+    assert.equal(hasMatch(normalizeArabic('وش تاريخ جلسة القضية'), withArticle), true);
+    // الكلمة الأولى غير معنية (سابقتها في prefixGroup)، والكلمة القصيرة لا تُمس.
+    const short = compileMatcher(['جلسة عن بعد'], ANALYZER_OPTS);
+    assert.equal(hasMatch(normalizeArabic('جلسة العن بعد'), short), false);
+    assert.equal(hasMatch(normalizeArabic('جلسة عن البعد'), short), true);
+});
+
+test('innerArticle معطّلة افتراضياً (محسّن الصياغة يستبدل النص المطابق حرفياً من القاموس)', () => {
+    const rx = compileMatcher(['موعد جلسه'], { prefix: 'clitic' });
+    assert.equal(hasMatch('موعد الجلسه', rx), false);
+    const a = getCachedMatcher(['موعد جلسه'], null, { prefix: 'clitic+al', suffix: true });
+    const b = getPhraseMatcher('موعد جلسه', { prefix: 'clitic+al', suffix: true, innerArticle: true });
+    assert.notEqual(a.source, b.source, 'الخيار جزء من مفتاح الكاش');
+});
+
+test('collectMatches: المطابقات متداخلة — العبارة الأدق لا تضيع لأن عبارة أقصر سبقتها', () => {
+    const keys = ['كم رسوم', 'رسوم رفع الدعوى'];
+    const rx = compileMatcher(keys, ANALYZER_OPTS);
+    const found = collectMatches(normalizeArabic('كم رسوم رفع الدعوى؟'), rx, keys.map(normalizeArabic));
+    assert.deepEqual([...found].sort(), ['رسوم رفع الدعوي', 'كم رسوم']);
+});
+
+test('collectMatches: الصيغة بـ«ال» داخلية تُردّ إلى مفتاحها فلا تُعدّ مرتين', () => {
+    const keys = ['موعد جلسة'];
+    const rx = compileMatcher(keys, ANALYZER_OPTS);
+    const found = collectMatches(
+        normalizeArabic('موعد الجلسة وموعد جلسة وموعد جلستنا'),
+        rx,
+        keys.map(normalizeArabic),
+    );
+    assert.deepEqual([...found], ['موعد جلسه']);
 });
