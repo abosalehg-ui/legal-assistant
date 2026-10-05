@@ -5,7 +5,7 @@
 // مستهلك يشترك عبر subscribe() ولا يملك أحد نسخة ثانية.
 
 import { readArray, writeJson, removeKey } from './safe-storage.js';
-import { mergeArticles, withNormalized } from './data.js';
+import { mergeArticles, withNormalized, validateArticle } from './data.js';
 
 const KEYS = {
     custom: 'customArticles',
@@ -33,7 +33,9 @@ export function subscribe(listener) {
 
 export function init(base) {
     baseArticles = Array.isArray(base) ? base : [];
-    customArticles = readArray(KEYS.custom);
+    // المواد المخزّنة تمر بنفس التحقق كالمستورد: عنصر تالف واحد (بلا text مثلاً)
+    // كان يكسر renderArticles عند article.text.length فيختفي عرض المواد كله.
+    customArticles = readArray(KEYS.custom).map(validateArticle).filter(Boolean);
     deletedIds = readArray(KEYS.deleted).filter(id => typeof id === 'string');
     rebuild();
     return articles;

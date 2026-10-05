@@ -41,10 +41,17 @@ test('init: يبني القائمة من الأساسي ويحسب الحقول 
 
 test('upsertArticle: يضيف مادة مخصصة ويُشعر المشتركين', () => {
     let notified = 0;
-    const unsubscribe = store.subscribe(() => { notified++; });
+    const unsubscribe = store.subscribe(() => {
+        notified++;
+    });
 
     const saved = store.upsertArticle({
-        id: 'c', number: 'المادة 3', title: 'جديدة', category: 'التنفيذ', text: 'نص ج', keywords: [],
+        id: 'c',
+        number: 'المادة 3',
+        title: 'جديدة',
+        category: 'التنفيذ',
+        text: 'نص ج',
+        keywords: [],
     });
 
     assert.equal(saved, true);
@@ -56,7 +63,12 @@ test('upsertArticle: يضيف مادة مخصصة ويُشعر المشتركي�
 
 test('upsertArticle: تعديل مادة أساسية يطغى عليها بلا تكرار', () => {
     store.upsertArticle({
-        id: 'a', number: 'المادة 1', title: 'معدلة', category: 'التبليغ', text: 'نص محدث', keywords: [],
+        id: 'a',
+        number: 'المادة 1',
+        title: 'معدلة',
+        category: 'التبليغ',
+        text: 'نص محدث',
+        keywords: [],
     });
     assert.equal(store.getArticles().length, 2);
     assert.equal(store.findArticle('a').title, 'معدلة');
@@ -67,7 +79,12 @@ test('removeArticle: يخفي الأساسية ويحذف المخصصة نها�
     assert.equal(store.findArticle('a'), undefined);
 
     store.upsertArticle({
-        id: 'c', number: 'المادة 3', title: 'مؤقتة', category: 'التنفيذ', text: 'نص', keywords: [],
+        id: 'c',
+        number: 'المادة 3',
+        title: 'مؤقتة',
+        category: 'التنفيذ',
+        text: 'نص',
+        keywords: [],
     });
     store.removeArticle('c');
     assert.equal(store.findArticle('c'), undefined);
@@ -82,7 +99,12 @@ test('upsertArticle: إعادة إضافة مادة أساسية محذوفة ت
     store.removeArticle('a');
     assert.equal(store.findArticle('a'), undefined);
     store.upsertArticle({
-        id: 'a', number: 'المادة 1', title: 'رجعت', category: 'التبليغ', text: 'نص', keywords: [],
+        id: 'a',
+        number: 'المادة 1',
+        title: 'رجعت',
+        category: 'التبليغ',
+        text: 'نص',
+        keywords: [],
     });
     assert.equal(store.findArticle('a').title, 'رجعت');
 });
@@ -106,7 +128,12 @@ test('replaceCustomArticles: يستبدل الكل ويعيد المحذوفات
 test('upsertArticle: يعيد false عند امتلاء التخزين مع بقاء الحالة متسقة مع الواجهة', () => {
     globalThis.__quotaFull = true;
     const saved = store.upsertArticle({
-        id: 'c', number: 'المادة 3', title: 'لن تُحفظ', category: 'التنفيذ', text: 'نص', keywords: [],
+        id: 'c',
+        number: 'المادة 3',
+        title: 'لن تُحفظ',
+        category: 'التنفيذ',
+        text: 'نص',
+        keywords: [],
     });
     assert.equal(saved, false);
     // الحالة في الذاكرة تتحدث حتى لا تتناقض الواجهة مع رسالة الفشل المعروضة
@@ -118,4 +145,17 @@ test('init: يتعافى من قيم مخزّنة تالفة أو من نوع خ
     globalThis.localStorage.setItem('deletedArticles', '{"not":"array"}');
     const articles = store.init(BASE);
     assert.equal(articles.length, 2);
+});
+
+test('init: المواد المخزّنة التالفة تُستبعد بدل أن تكسر العرض', () => {
+    globalThis.localStorage.setItem(
+        'customArticles',
+        JSON.stringify([
+            { id: 'c', number: 'المادة 3', title: 'مخصص', category: 'الجلسات', text: 'نص' },
+            { id: 'broken', number: 'المادة 4', title: 'بلا نص' },
+            'ليست مادة',
+        ]),
+    );
+    const articles = store.init(BASE);
+    assert.deepEqual(articles.map(a => a.id).sort(), ['a', 'b', 'c']);
 });

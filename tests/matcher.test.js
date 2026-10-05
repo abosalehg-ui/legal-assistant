@@ -88,7 +88,9 @@ test('getCachedMatcher: يطبّع العبارات قبل الترجمة فيط
 
 test('compileMatcher: اللواحق المتصلة تُطابق الكلمة المجردة (طلبكم، قضيتهم، جلساتنا)', () => {
     const rx = compileMatcher(['طلب', 'قضية', 'جلسة'], {
-        prefix: 'clitic+al', suffix: true, normalize: normalizeArabic,
+        prefix: 'clitic+al',
+        suffix: true,
+        normalize: normalizeArabic,
     });
     for (const text of ['وصلني طلبكم', 'بخصوص قضيتهم', 'حضرنا جلساتنا', 'الطلبات المقدمة']) {
         assert.ok(hasMatch(normalizeArabic(text), rx), `يفترض أن يطابق: ${text}`);
@@ -99,7 +101,11 @@ test('compileMatcher: التاء المربوطة وحدها تتصرّف — «
     // بعد التطبيع تصير «ليه» و«جلسة» كلتاهما منتهيتين بهاء؛ الفرق في الأصل الخام وحده.
     const real = compileMatcher(['ليه'], { prefix: 'clitic+al', suffix: true, normalize: normalizeArabic });
     assert.equal(hasMatch(normalizeArabic('يا ليت الأمر انتهى'), real), false);
-    const marbuta = compileMatcher(['جلسة'], { prefix: 'clitic+al', suffix: true, normalize: normalizeArabic });
+    const marbuta = compileMatcher(['جلسة'], {
+        prefix: 'clitic+al',
+        suffix: true,
+        normalize: normalizeArabic,
+    });
     assert.ok(hasMatch(normalizeArabic('موعد جلستنا'), marbuta));
 });
 

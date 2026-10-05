@@ -31,6 +31,24 @@ export function downloadJson(data, prefix) {
     URL.revokeObjectURL(url);
 }
 
+// حد لحجم الملف المستورد: file.text() + JSON.parse على ملف ضخم يجمّد الواجهة تماماً.
+export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+
+// يتحقق من الحجم ويقرأ الملف كـ JSON. يعيد null بعد إظهار السبب للمستخدم.
+// مسار واحد لاستيراد المواد واستيراد الأرشيف — كان الفحص مكرراً في app.js و admin.js.
+export async function readJsonFile(file) {
+    if (file.size > MAX_IMPORT_BYTES) {
+        showToast('الملف أكبر من ٥ ميجابايت — تعذّر الاستيراد');
+        return null;
+    }
+    try {
+        return JSON.parse(await file.text());
+    } catch {
+        showToast('ملف غير صالح');
+        return null;
+    }
+}
+
 export function setBusy(isBusy) {
     const main = document.getElementById('mainContainer');
     if (main) main.setAttribute('aria-busy', isBusy ? 'true' : 'false');
@@ -165,12 +183,14 @@ export function renderAnalysis(analysis) {
         html += '<div class="analysis-item"><strong>الموضوع الرئيسي:</strong><div class="tag-list">';
         analysis.detectedIntents.forEach((i, index) => {
             const active = index === (analysis.activeIntentIndex ?? 0);
-            const why = i.matchedTerms && i.matchedTerms.length
-                ? `طابق: ${i.matchedTerms.join('، ')}`
-                : 'بلا عبارات مطابقة';
-            html += `<button type="button" class="tag intent intent-choice${active ? ' active' : ''}"`
-                + ` data-intent-index="${index}" aria-pressed="${active}"`
-                + ` title="${escapeHtml(why)}">${escapeHtml(i.label)}</button>`;
+            const why =
+                i.matchedTerms && i.matchedTerms.length
+                    ? `طابق: ${i.matchedTerms.join('، ')}`
+                    : 'بلا عبارات مطابقة';
+            html +=
+                `<button type="button" class="tag intent intent-choice${active ? ' active' : ''}"` +
+                ` data-intent-index="${index}" aria-pressed="${active}"` +
+                ` title="${escapeHtml(why)}">${escapeHtml(i.label)}</button>`;
         });
         html += '</div>';
         const chosen = analysis.detectedIntents[analysis.activeIntentIndex ?? 0];
@@ -183,9 +203,10 @@ export function renderAnalysis(analysis) {
         html += '</div>';
     } else {
         // الصمت هنا كان يُقرأ كعطل: الرد الافتراضي يظهر بلا سبب معلن.
-        html += '<div class="analysis-item"><strong>الموضوع الرئيسي:</strong> '
-            + '<span class="tag">لم يُحدَّد — استُخدم الرد العام</span>'
-            + '<div class="analysis-why">أضف عبارات هذه الرسالة إلى data/intents.json ليتعرف عليها لاحقاً.</div></div>';
+        html +=
+            '<div class="analysis-item"><strong>الموضوع الرئيسي:</strong> ' +
+            '<span class="tag">لم يُحدَّد — استُخدم الرد العام</span>' +
+            '<div class="analysis-why">أضف عبارات هذه الرسالة إلى data/intents.json ليتعرف عليها لاحقاً.</div></div>';
     }
 
     if (analysis.entities.length > 0) {
@@ -224,22 +245,24 @@ export function renderArticles(articles, selectedIds) {
     const container = document.getElementById('articlesContainer');
 
     if (articles.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>لم يتم العثور على مواد ذات صلة</p></div>';
+        container.innerHTML =
+            '<div class="empty-state"><div class="icon">🔍</div><p>لم يتم العثور على مواد ذات صلة</p></div>';
         return;
     }
 
-    container.innerHTML = articles.map(article => {
-        const scoreTag = typeof article.score === 'number' && article.score > 0
-            ? `<span class="article-score">تطابق ${formatNumber(article.score)}</span>`
-            : '';
-        const isSelected = selectedIds.includes(article.id) ? 'selected' : '';
-        const sourceLink = isSafeUrl(article.sourceUrl)
-            ? `<a class="article-source" href="${escapeHtml(article.sourceUrl)}" target="_blank" rel="noopener" title="المصدر الرسمي" data-no-toggle>🔗</a>`
-            : '';
-        const truncated = article.text.length > 150
-            ? article.text.substring(0, 150) + '...'
-            : article.text;
-        return `
+    container.innerHTML = articles
+        .map(article => {
+            const scoreTag =
+                typeof article.score === 'number' && article.score > 0
+                    ? `<span class="article-score">تطابق ${formatNumber(article.score)}</span>`
+                    : '';
+            const isSelected = selectedIds.includes(article.id) ? 'selected' : '';
+            const sourceLink = isSafeUrl(article.sourceUrl)
+                ? `<a class="article-source" href="${escapeHtml(article.sourceUrl)}" target="_blank" rel="noopener" title="المصدر الرسمي" data-no-toggle>🔗</a>`
+                : '';
+            const truncated =
+                article.text.length > 150 ? article.text.substring(0, 150) + '...' : article.text;
+            return `
         <div class="article-item ${isSelected}" data-id="${escapeHtml(article.id)}" role="button" tabindex="0" aria-pressed="${isSelected ? 'true' : 'false'}">
             <div>
                 <span class="article-number">${escapeHtml(article.number)}</span>
@@ -253,17 +276,21 @@ export function renderArticles(articles, selectedIds) {
                 ${verifiedBadge(article)}
             </div>
         </div>`;
-    }).join('');
+        })
+        .join('');
 }
 
 export function renderTemplates(templates) {
     const grid = document.getElementById('templatesGrid');
-    grid.innerHTML = templates.map(template =>
-        `<div class="template-card" data-id="${escapeHtml(template.id)}" role="button" tabindex="0">
+    grid.innerHTML = templates
+        .map(
+            template =>
+                `<div class="template-card" data-id="${escapeHtml(template.id)}" role="button" tabindex="0">
             <div class="template-icon">${escapeHtml(template.icon)}</div>
             <div class="template-name">${escapeHtml(template.name)}</div>
         </div>`,
-    ).join('');
+        )
+        .join('');
 }
 
 export function renderCategoryFilter(categories, activeCategory = 'all') {
@@ -277,16 +304,19 @@ export function renderCategoryFilter(categories, activeCategory = 'all') {
 }
 
 export const STATUS_LABELS = {
-    'new': 'جديد',
+    new: 'جديد',
     'in-progress': 'قيد المعالجة',
-    'closed': 'مغلق',
+    closed: 'مغلق',
 };
 
 function statusSelect(response) {
     const current = STATUS_LABELS[response.status] ? response.status : 'new';
-    const options = Object.entries(STATUS_LABELS).map(([value, label]) =>
-        `<option value="${value}"${value === current ? ' selected' : ''}>${escapeHtml(label)}</option>`,
-    ).join('');
+    const options = Object.entries(STATUS_LABELS)
+        .map(
+            ([value, label]) =>
+                `<option value="${value}"${value === current ? ' selected' : ''}>${escapeHtml(label)}</option>`,
+        )
+        .join('');
     return `<select class="saved-status status-${current}" data-action="status" data-id="${escapeHtml(response.id)}" aria-label="حالة معالجة الرد">${options}</select>`;
 }
 
@@ -313,8 +343,10 @@ export function renderSavedResponses(savedResponses, filtered = null) {
         return;
     }
 
-    container.innerHTML = list.map(response =>
-        `<div class="saved-item">
+    container.innerHTML = list
+        .map(
+            response =>
+                `<div class="saved-item">
             <div class="saved-item-actions">
                 <button data-action="load" data-id="${escapeHtml(response.id)}" title="تحميل" aria-label="تحميل الرد المحفوظ">📂</button>
                 <button data-action="delete" data-id="${escapeHtml(response.id)}" title="حذف" aria-label="حذف الرد المحفوظ">🗑️</button>
@@ -326,7 +358,8 @@ export function renderSavedResponses(savedResponses, filtered = null) {
                 ${statusSelect(response)}
             </div>
         </div>`,
-    ).join('');
+        )
+        .join('');
 }
 
 // تعبئة قائمة تصفية الفئات من فئات الردود المحفوظة فعلاً، مع الحفاظ على الاختيار الحالي.
@@ -360,5 +393,6 @@ export function renderStats(stats, articlesCount) {
     if (els.total) els.total.textContent = formatNumber(stats.total);
     if (els.topCategory) els.topCategory.textContent = stats.topCategory || '—';
     if (els.open) els.open.textContent = formatNumber(stats.open || 0);
-    if (els.complaints) els.complaints.textContent = formatNumber((stats.byTone && stats.byTone.complaint) || 0);
+    if (els.complaints)
+        els.complaints.textContent = formatNumber((stats.byTone && stats.byTone.complaint) || 0);
 }

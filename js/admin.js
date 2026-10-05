@@ -1,7 +1,7 @@
 // شاشة إدارة المواد النظامية + تصدير/استيراد.
 
-import { escapeHtml, showToast, downloadJson, confirmDialog } from './ui.js';
-import { isSafeUrl, validateArticle, toPlainArticle } from './data.js';
+import { escapeHtml, showToast, downloadJson, confirmDialog, readJsonFile } from './ui.js';
+import { checkArticle, validateArticle, toPlainArticle } from './data.js';
 import {
     getArticles,
     findArticle,
@@ -12,9 +12,6 @@ import {
     subscribe,
 } from './store.js';
 
-// حد لحجم الملف المستورد: file.text() + JSON.parse على ملف ضخم يجمّد الواجهة تماماً.
-export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
-
 export function initAdmin() {
     renderAdminList();
     bindAdminEvents();
@@ -22,7 +19,9 @@ export function initAdmin() {
 }
 
 function getCurrentList() {
-    return getArticles().slice().sort((a, b) => a.number.localeCompare(b.number, 'ar'));
+    return getArticles()
+        .slice()
+        .sort((a, b) => a.number.localeCompare(b.number, 'ar'));
 }
 
 function renderAdminList() {
@@ -35,7 +34,9 @@ function renderAdminList() {
         return;
     }
 
-    container.innerHTML = list.map(a => `
+    container.innerHTML = list
+        .map(
+            a => `
         <div class="admin-list-item" data-id="${escapeHtml(a.id)}">
             <div class="info">
                 <div class="item-title">${escapeHtml(a.number)} — ${escapeHtml(a.title)}</div>
@@ -46,7 +47,9 @@ function renderAdminList() {
                 <button data-action="delete" title="حذف" aria-label="حذف المادة">🗑️</button>
             </div>
         </div>
-    `).join('');
+    `,
+        )
+        .join('');
 }
 
 function clearForm() {
@@ -68,49 +71,37 @@ function loadForm(article) {
     document.getElementById('fText').value = article.text;
 }
 
+// التحقق كله في checkArticle (data.js) — النموذج يعرض سبب الرفض فقط.
+const FORM_ERRORS = {
+    missing: 'يرجى تعبئة الحقول الأساسية',
+    'unsafe-url': 'رابط المصدر يجب أن يكون رابط https صالحاً',
+};
+
 function readForm() {
-    const id = document.getElementById('fId').value.trim();
-    const number = document.getElementById('fNumber').value.trim();
-    const title = document.getElementById('fTitle').value.trim();
-    const category = document.getElementById('fCategory').value.trim();
-    const keywords = document.getElementById('fKeywords').value
-        .split(/[،,]/).map(s => s.trim()).filter(Boolean);
-    const sourceUrl = document.getElementById('fSourceUrl').value.trim();
-    const text = document.getElementById('fText').value.trim();
-    if (!id || !number || !title || !category || !text) {
-        showToast('يرجى تعبئة الحقول الأساسية');
-        return null;
-    }
-    if (sourceUrl && !isSafeUrl(sourceUrl)) {
-        showToast('رابط المصدر يجب أن يكون رابط https صالحاً');
-        return null;
-    }
-    const article = validateArticle({ id, number, title, category, keywords, sourceUrl, text });
+    const value = id => document.getElementById(id).value;
+    const { article, error } = checkArticle(
+        {
+            id: value('fId'),
+            number: value('fNumber'),
+            title: value('fTitle'),
+            category: value('fCategory'),
+            keywords: value('fKeywords').split(/[،,]/),
+            sourceUrl: value('fSourceUrl'),
+            text: value('fText'),
+        },
+        { strictUrl: true },
+    );
     if (!article) {
-        showToast('تعذّر التحقق من بيانات المادة');
+        showToast(FORM_ERRORS[error] || 'تعذّر التحقق من بيانات المادة');
         return null;
     }
     return article;
 }
 
-// يتحقق من الحجم ويقرأ الملف كـ JSON. يعيد null بعد إظهار السبب للمستخدم.
-async function readJsonFile(file) {
-    if (file.size > MAX_IMPORT_BYTES) {
-        showToast('الملف أكبر من ٥ ميجابايت — تعذّر الاستيراد');
-        return null;
-    }
-    try {
-        return JSON.parse(await file.text());
-    } catch {
-        showToast('ملف غير صالح');
-        return null;
-    }
-}
-
 function bindAdminEvents() {
     const adminList = document.getElementById('adminList');
     if (adminList) {
-        adminList.addEventListener('click', async (e) => {
+        adminList.addEventListener('click', async e => {
             const item = e.target.closest('.admin-list-item');
             if (!item) return;
             const id = item.dataset.id;
@@ -163,7 +154,7 @@ function bindAdminEvents() {
         document.getElementById('adminImportFile')?.click();
     });
 
-    document.getElementById('adminImportFile')?.addEventListener('change', async (e) => {
+    document.getElementById('adminImportFile')?.addEventListener('change', async e => {
         const file = e.target.files[0];
         if (!file) return;
         const ok = await confirmDialog(
@@ -195,9 +186,11 @@ function bindAdminEvents() {
             return;
         }
 
-        showToast(rejected > 0
-            ? `تم استيراد ${valid.length} مادة (رُفضت ${rejected} لعدم اكتمال بياناتها)`
-            : `تم استيراد ${valid.length} مادة`);
+        showToast(
+            rejected > 0
+                ? `تم استيراد ${valid.length} مادة (رُفضت ${rejected} لعدم اكتمال بياناتها)`
+                : `تم استيراد ${valid.length} مادة`,
+        );
         e.target.value = '';
     });
 }

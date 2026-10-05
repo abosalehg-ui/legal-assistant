@@ -2,6 +2,7 @@
 
 import { readArray, writeJson, readString, writeString } from './safe-storage.js';
 import { formatDate } from './format.js';
+import { normalizeArabic } from './analyzer.js';
 
 const KEY = 'savedResponses';
 const RETENTION_KEY = 'retentionDays';
@@ -109,10 +110,10 @@ export function setResponseStatus(id, status) {
     return writeJson(KEY, list) ? list : null;
 }
 
+// تعيد false إذا تعذّرت الكتابة — حتى لا تُعلن الواجهة حذفاً لم يحدث.
 export function deleteResponse(id) {
     const list = loadSavedResponses().filter(r => r.id !== id);
-    writeJson(KEY, list);
-    return list;
+    return writeJson(KEY, list);
 }
 
 export function clearAllResponses() {
@@ -137,17 +138,19 @@ export function importResponses(items) {
         const id = typeof raw.id === 'number' ? raw.id : Date.now() + added;
         if (seen.has(id)) continue;
         seen.add(id);
-        list.push(normalizeSavedItem({
-            id,
-            text: raw.text,
-            category: typeof raw.category === 'string' ? raw.category : null,
-            tone: raw.tone,
-            urgent: raw.urgent,
-            status: raw.status,
-            date: typeof raw.date === 'string' ? raw.date : '',
-            timestamp: typeof raw.timestamp === 'number' ? raw.timestamp : id,
-            preview: raw.text.substring(0, 100),
-        }));
+        list.push(
+            normalizeSavedItem({
+                id,
+                text: raw.text,
+                category: typeof raw.category === 'string' ? raw.category : null,
+                tone: raw.tone,
+                urgent: raw.urgent,
+                status: raw.status,
+                date: typeof raw.date === 'string' ? raw.date : '',
+                timestamp: typeof raw.timestamp === 'number' ? raw.timestamp : id,
+                preview: raw.text.substring(0, 100),
+            }),
+        );
         added++;
     }
 
@@ -196,12 +199,18 @@ export function computeStats(savedResponses) {
 }
 
 // تصفية الأرشيف — دالة نقية قابلة للاختبار بلا DOM. 'all' تعني بلا تصفية للحقل.
-export function filterSavedResponses(list, { query = '', status = 'all', tone = 'all', category = 'all' } = {}) {
-    const q = query.trim().toLowerCase();
-    return list.filter(r =>
-        (!q || r.text.toLowerCase().includes(q)) &&
-        (status === 'all' || (r.status || DEFAULT_STATUS) === status) &&
-        (tone === 'all' || (r.tone || 'neutral') === tone) &&
-        (category === 'all' || r.category === category),
+// النص والاستعلام يُطبَّعان بنفس تطبيع المحلل وبحث المواد: «الجلسة» تجد «الجلسه»،
+// و«٤٥٢١» تجد «4521» — الموظف لا يتذكر كيف كُتبت الكلمة في رد حُفظ قبل أسابيع.
+export function filterSavedResponses(
+    list,
+    { query = '', status = 'all', tone = 'all', category = 'all' } = {},
+) {
+    const q = normalizeArabic(query.trim());
+    return list.filter(
+        r =>
+            (!q || normalizeArabic(r.text).includes(q)) &&
+            (status === 'all' || (r.status || DEFAULT_STATUS) === status) &&
+            (tone === 'all' || (r.tone || 'neutral') === tone) &&
+            (category === 'all' || r.category === category),
     );
 }

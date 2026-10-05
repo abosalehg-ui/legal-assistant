@@ -1,8 +1,10 @@
 # ⚖️ مساعد الردود للمستفيدين
 
-### نظام المرافعات الشرعية - وزارة العدل السعودية
+### مبنية على اللوائح التنفيذية لنظام المرافعات الشرعية
 
 أداة ذكية تساعد موظفي المحاكم على تحليل رسائل المستفيدين وصياغة الردود الرسمية المستندة إلى مواد نظام المرافعات الشرعية
+
+> **إخلاء مسؤولية:** مشروع مستقل مفتوح المصدر، وليس منتجاً رسمياً لوزارة العدل ولا لأي جهة حكومية ولا يمثّلها. نصوص المواد للاسترشاد، والمرجع المعتمد هو النص المنشور في [هيئة الخبراء](https://laws.boe.gov.sa/). الرد المولَّد مسودة يراجعها الموظف قبل إرسالها.
 
 [![GitHub Pages](https://img.shields.io/badge/GitHub-Pages-222222?style=for-the-badge&logo=github)](https://abosalehg-ui.github.io/legal-assistant/)
 [![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
@@ -112,9 +114,9 @@ python3 -m http.server 8000
 | الاختصار | الإجراء |
 | --- | --- |
 | `Ctrl` + `Enter` | تحليل الرسالة |
-| `Ctrl` + `Shift` + `I` | تحسين الصياغة |
+| `Ctrl` + `Shift` + `F` | تحسين الصياغة |
 | `Ctrl` + `S` | حفظ الرد |
-| `Ctrl` + `Shift` + `C` | نسخ الرد النهائي |
+| `Ctrl` + `Shift` + `L` | نسخ الرد النهائي |
 | `Ctrl` + `P` | طباعة الرد |
 | `Ctrl` + `/` | عرض الاختصارات |
 | `Esc` | إغلاق النافذة المنبثقة |
@@ -130,11 +132,14 @@ legal-assistant/
 ├── CONTRIBUTING.md             # دليل المساهمة وبنية ملفات JSON
 ├── LICENSE                     # رخصة MIT
 ├── manifest.webmanifest        # بيان تطبيق الويب (PWA)
-├── sw.js                       # Service Worker للعمل دون اتصال
+├── sw.js                       # Service Worker للعمل دون اتصال (CACHE_NAME يحمل بصمة الأصول)
 ├── icon.svg                    # أيقونة التطبيق
 ├── package.json                # سكربتات npm وأدوات التطوير
 ├── eslint.config.js            # إعداد ESLint
-├── .github/workflows/ci.yml    # تكامل مستمر (lint + test)
+├── .github/workflows/ci.yml    # تكامل مستمر (JSON + lint + format + test)
+├── scripts/
+│   └── sw-hash.mjs             # حساب/تحديث بصمة أصول Service Worker (npm run sw:hash)
+├── docs/reviews/               # تقارير المراجعة الهندسية السابقة
 ├── css/
 │   ├── fonts.css               # خطوط مستضافة ذاتياً
 │   ├── themes.css              # متغيرات الوضع الفاتح/الداكن
@@ -148,8 +153,11 @@ legal-assistant/
 │   └── colloquial-map.json     # قاموس عامية → فصحى
 ├── tests/                      # اختبارات وحدة (node:test + jsdom)
 │   ├── fixtures/
-│   │   └── labeled-messages.json  # مجموعة تقييم مصنّفة يدوياً (١١٠ رسائل)
-│   ├── accuracy.test.js        # حارس دقة التصنيف على مجموعة التقييم
+│   │   ├── labeled-messages.json          # مجموعة الضبط (١١٠ رسائل)
+│   │   └── labeled-messages.holdout.json  # مجموعة محجوزة (٣٠ رسالة) لا تُضبط عليها القوائم
+│   ├── accuracy.test.js        # حارس دقة التصنيف على المجموعتين
+│   ├── app.test.js             # اختبارات تكامل app.js على الصفحة والبيانات الحقيقية (jsdom)
+│   ├── shortcuts.test.js       # الاختصارات بالموضع الفيزيائي + الوضع اللوني مع تخزين محظور
 │   ├── matcher.test.js
 │   ├── analyzer.test.js
 │   ├── response.test.js
@@ -182,9 +190,15 @@ legal-assistant/
 ```bash
 npm install        # أدوات التطوير فقط (التطبيق نفسه بلا اعتماديات)
 npm run serve      # خادم محلي على http://localhost:8000
-npm test           # اختبارات الوحدة (node:test)
+npm test           # اختبارات الوحدة والتكامل (node:test)
 npm run lint       # فحص ESLint
+npm run format:check  # فحص Prettier (يعمل في CI)
+npm run sw:hash    # تحديث بصمة أصول Service Worker بعد تعديل أي ملف JS/CSS/HTML/بيانات
 ```
+
+> **مهم عند تعديل أي ملف في `js/` أو `css/` أو `data/` أو `index.html`:** شغّل `npm run sw:hash`. البصمة في `sw.js` هي ما يجعل المتصفح يثبّت الإصدار الجديد عند المستخدمين الحاليين، و`npm test` يفشل إذا نُسيت.
+
+مراجعات المشروع السابقة في [`docs/reviews/`](docs/reviews/).
 
 للمزيد عن بنية ملفات البيانات وكيفية إضافة مواد نظامية، انظر [دليل المساهمة](CONTRIBUTING.md).
 

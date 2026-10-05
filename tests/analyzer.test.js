@@ -24,9 +24,9 @@ test('normalizeArabic: توحيد الهمزات والتاء المربوطة �
 
 test('extractKeywords: يجمع الكلمة الرئيسية عند ورود أي مرادف', () => {
     const synonyms = {
-        'تبليغ': ['تبليغ', 'إشعار', 'بلغوني'],
-        'جلسة': ['جلسة', 'قعدة'],
-        'حكم': ['صك'],
+        تبليغ: ['تبليغ', 'إشعار', 'بلغوني'],
+        جلسة: ['جلسة', 'قعدة'],
+        حكم: ['صك'],
     };
     const text = normalizeArabic('ما وصلني إشعار عن القعدة');
     const found = extractKeywords(text, synonyms);
@@ -40,7 +40,7 @@ test('detectIntent: يعيد النية بحقول البيانات (slug/label/
             label: 'استفسار عن موعد جلسة',
             keywords: ['موعد الجلسة', 'وين جلستي'],
             priority: 10,
-            boostCategories: { 'الجلسات': 20 },
+            boostCategories: { الجلسات: 20 },
             responseText: 'رد الجلسة',
         },
         {
@@ -60,7 +60,7 @@ test('detectIntent: يعيد النية بحقول البيانات (slug/label/
     assert.equal(detected[0].score, 30);
     assert.deepEqual(detected[0].matchedTerms.sort(), ['موعد الجلسه', 'وين جلستي']);
     assert.equal(detected[0].responseText, 'رد الجلسة');
-    assert.deepEqual(detected[0].boostCategories, { 'الجلسات': 20 });
+    assert.deepEqual(detected[0].boostCategories, { الجلسات: 20 });
     assert.equal(detected[1].id, 'delayed-reply');
 });
 
@@ -139,13 +139,34 @@ test('extractEntities: يستخرج الأنواع الأربعة ولا يكر�
 });
 
 const sampleArticles = [
-    { id: '1', number: 'المادة 1', title: 'مدة الجلسة', text: 'تكون مدة الجلسة ثلاثين دقيقة', category: 'الجلسات', keywords: ['جلسة', 'مدة'] },
-    { id: '2', number: 'المادة 2', title: 'التبليغ بالعنوان', text: 'يعد التبليغ بالعنوان الوطني تبليغاً', category: 'التبليغ', keywords: ['تبليغ', 'عنوان وطني'] },
-    { id: '3', number: 'المادة 3', title: 'سقوط الاستئناف', text: 'يسقط الحق في الاستئناف بمضي المدة', category: 'الاعتراض', keywords: ['استئناف', 'اعتراض'] },
+    {
+        id: '1',
+        number: 'المادة 1',
+        title: 'مدة الجلسة',
+        text: 'تكون مدة الجلسة ثلاثين دقيقة',
+        category: 'الجلسات',
+        keywords: ['جلسة', 'مدة'],
+    },
+    {
+        id: '2',
+        number: 'المادة 2',
+        title: 'التبليغ بالعنوان',
+        text: 'يعد التبليغ بالعنوان الوطني تبليغاً',
+        category: 'التبليغ',
+        keywords: ['تبليغ', 'عنوان وطني'],
+    },
+    {
+        id: '3',
+        number: 'المادة 3',
+        title: 'سقوط الاستئناف',
+        text: 'يسقط الحق في الاستئناف بمضي المدة',
+        category: 'الاعتراض',
+        keywords: ['استئناف', 'اعتراض'],
+    },
 ];
 
 test('findRelevantArticles: تطابق الكلمات يرفع الدرجة والفئة المعززة تتقدم', () => {
-    const intents = [{ id: 'session-date', boostCategories: { 'الجلسات': 20 } }];
+    const intents = [{ id: 'session-date', boostCategories: { الجلسات: 20 } }];
     const results = findRelevantArticles(sampleArticles, ['جلسة'], intents);
     assert.equal(results[0].id, '1');
     assert.ok(results[0].score >= 35); // 15 تطابق تام + 20 تعزيز فئة
@@ -171,16 +192,46 @@ test('extractEntities: يقرأ الأرقام العربية وصيغ الجو�
     assert.deepEqual(eastern.map(e => e.value).sort(), ['0512345678', '4521987']);
 
     const intl = extractEntities('للتواصل +966 51 234 5678');
-    assert.deepEqual(intl.filter(e => e.type === 'رقم جوال').map(e => e.value), ['966512345678']);
+    assert.deepEqual(
+        intl.filter(e => e.type === 'رقم جوال').map(e => e.value),
+        ['966512345678'],
+    );
 
     // رقم مرجعي قصير لا يبلغ سبع خانات لكنه مسبوق بكلمة دالة.
     const short = extractEntities('معاملة رقم 45219');
     assert.deepEqual(short, [{ type: 'رقم طلب/مذكرة', value: '45219' }]);
 });
 
+test('extractEntities: جوال بصيغة دولية لا يُصنَّف رقم طلب (لا يُكتب في الخطاب كمرجع)', () => {
+    for (const phone of ['00966512345678', '+966512345678', '00966 51 234 5678']) {
+        const entities = extractEntities(`جوالي ${phone} وطلب رقم 45219`);
+        assert.deepEqual(
+            entities.map(e => [e.type, e.value]),
+            [
+                ['رقم جوال', '966512345678'],
+                ['رقم طلب/مذكرة', '45219'],
+            ],
+            phone,
+        );
+    }
+    // رقم الجوال بعد كلمة دالة («رقم») لا يصير مرجعاً كذلك.
+    const afterRef = extractEntities('تواصلوا على رقم 00966512345678');
+    assert.deepEqual(
+        afterRef.map(e => e.type),
+        ['رقم جوال'],
+    );
+});
+
 test('detectIntent: يعيد العبارات التي أدّت للتصنيف والعبارة المركّبة أثقل من المفردة', () => {
     const patterns = [
-        { id: 'a', label: 'أ', keywords: ['موعد الجلسة'], priority: 10, boostCategories: {}, responseText: '' },
+        {
+            id: 'a',
+            label: 'أ',
+            keywords: ['موعد الجلسة'],
+            priority: 10,
+            boostCategories: {},
+            responseText: '',
+        },
         { id: 'b', label: 'ب', keywords: ['جلسة'], priority: 10, boostCategories: {}, responseText: '' },
     ];
     const detected = detectIntent(normalizeArabic('متى موعد الجلسة؟'), patterns);
@@ -191,8 +242,22 @@ test('detectIntent: يعيد العبارات التي أدّت للتصنيف �
 
 test('findRelevantArticles: «حكم» لا ترجّح مادة لا تذكر إلا «المحكمة»', () => {
     const articles = [
-        { id: '1', number: 'م1', title: 'مقر المحكمة', text: 'تنعقد المحكمة في مقرها', category: 'أحكام عامة', keywords: ['محكمة'] },
-        { id: '2', number: 'م2', title: 'النطق بالحكم', text: 'يصدر الحكم علناً', category: 'أحكام عامة', keywords: ['حكم'] },
+        {
+            id: '1',
+            number: 'م1',
+            title: 'مقر المحكمة',
+            text: 'تنعقد المحكمة في مقرها',
+            category: 'أحكام عامة',
+            keywords: ['محكمة'],
+        },
+        {
+            id: '2',
+            number: 'م2',
+            title: 'النطق بالحكم',
+            text: 'يصدر الحكم علناً',
+            category: 'أحكام عامة',
+            keywords: ['حكم'],
+        },
     ];
     const results = findRelevantArticles(articles, ['حكم'], []);
     assert.equal(results.length, 1, 'المادة التي لا تذكر إلا «المحكمة» تخرج من النتائج');

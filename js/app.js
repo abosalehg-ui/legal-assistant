@@ -9,12 +9,7 @@ import {
     extractEntities,
     findRelevantArticles,
 } from './analyzer.js';
-import {
-    suggestResponse,
-    improveLanguage,
-    copyToClipboard,
-    fallbackCopy,
-} from './response.js';
+import { suggestResponse, improveLanguage, copyToClipboard, fallbackCopy } from './response.js';
 import {
     loadSavedResponses,
     addResponse,
@@ -44,11 +39,12 @@ import {
     downloadJson,
     confirmDialog,
     setBusy,
+    readJsonFile,
 } from './ui.js';
 import { initTheme, toggleTheme } from './theme.js';
 import { registerShortcuts, getShortcutsList } from './shortcuts.js';
-import { initAdmin, MAX_IMPORT_BYTES } from './admin.js';
-import { formatDate } from './format.js';
+import { initAdmin } from './admin.js';
+import { formatDate, formatNumber } from './format.js';
 import * as store from './store.js';
 
 // حارس ضد التضمين في إطار (clickjacking): frame-ancestors لا يمكن ضبطه عبر <meta>،
@@ -70,15 +66,11 @@ const app = {
     savedResponses: [],
     currentFilter: 'all',
     archiveFilters: { query: '', status: 'all', tone: 'all', category: 'all' },
-    lastMessage: '',
-    lastKeywords: [],
-    lastDetectedIntents: [],
-    activeIntentIndex: 0,
-    lastAnalysisIntent: null,
-    lastAnalysisTone: null,
-    lastEntities: [],
-    // آخر نتائج تحليل مرتّبة بالصلة. تُحفظ حتى لا تضيع عند مسح خانة البحث.
-    lastRelevantArticles: null,
+    // نتيجة التحليل الحالي في كائن واحد، أو null إن لم يُحلَّل شيء أو مُسح.
+    // كانت ثمانية حقول متفرقة يصفّر «مسح» بعضها وينسى بعضها، فيملأ القالب التالي
+    // رقم المستفيد السابق. الآن التصفير سطر واحد ولا يمكن أن يكون جزئياً.
+    // { message, keywords, intents, activeIntentIndex, activeIntent, tone, entities, relevantArticles }
+    analysis: null,
     outputBackup: null,
 };
 
@@ -97,10 +89,14 @@ function showLoadError() {
     const box = document.getElementById('loadErrorCard');
     if (!box) return;
     box.classList.add('show');
-    document.getElementById('retryLoadBtn')?.addEventListener('click', () => {
-        box.classList.remove('show');
-        start();
-    }, { once: true });
+    document.getElementById('retryLoadBtn')?.addEventListener(
+        'click',
+        () => {
+            box.classList.remove('show');
+            start();
+        },
+        { once: true },
+    );
 }
 
 let eventsBound = false;
@@ -234,7 +230,7 @@ function bindEvents() {
     document.getElementById('openShortcutsBtn').addEventListener('click', () => openModal('shortcutsModal'));
 
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.addEventListener('click', (e) => {
+        overlay.addEventListener('click', e => {
             if (e.target === overlay) closeModal(overlay.id);
         });
         overlay.querySelectorAll('[data-close-modal]').forEach(btn => {
@@ -245,22 +241,22 @@ function bindEvents() {
     document.getElementById('articleSearch').addEventListener('input', searchArticles);
 
     // تصحيح التصنيف بنقرة: يعيد ترتيب المواد ويولّد الرد على أساس الموضوع المختار.
-    document.getElementById('analysisContent')?.addEventListener('click', (e) => {
+    document.getElementById('analysisContent')?.addEventListener('click', e => {
         const btn = e.target.closest('[data-intent-index]');
         if (!btn) return;
         const index = Number(btn.dataset.intentIndex);
-        if (index === app.activeIntentIndex) return;
+        if (!app.analysis || index === app.analysis.activeIntentIndex) return;
         applyIntentSelection(index);
         showToast('أُعيد توليد الرد على الموضوع المختار');
     });
 
-    document.getElementById('savedSearch').addEventListener('input', (e) => {
+    document.getElementById('savedSearch').addEventListener('input', e => {
         app.archiveFilters.query = e.target.value;
         renderFilteredArchive();
     });
 
     const bindArchiveFilter = (id, key) => {
-        document.getElementById(id)?.addEventListener('change', (e) => {
+        document.getElementById(id)?.addEventListener('change', e => {
             app.archiveFilters[key] = e.target.value;
             renderFilteredArchive();
         });
@@ -269,7 +265,7 @@ function bindEvents() {
     bindArchiveFilter('archiveToneFilter', 'tone');
     bindArchiveFilter('archiveCategoryFilter', 'category');
 
-    document.getElementById('categoryFilter').addEventListener('click', (e) => {
+    document.getElementById('categoryFilter').addEventListener('click', e => {
         const btn = e.target.closest('.category-btn');
         if (btn) filterByCategory(btn.dataset.category);
     });
@@ -278,25 +274,25 @@ function bindEvents() {
     const bindActivate = (containerId, handler) => {
         const container = document.getElementById(containerId);
         container.addEventListener('click', handler);
-        container.addEventListener('keydown', (e) => {
+        container.addEventListener('keydown', e => {
             if (e.key !== 'Enter' && e.key !== ' ') return;
             e.preventDefault();
             handler(e);
         });
     };
 
-    bindActivate('articlesContainer', (e) => {
+    bindActivate('articlesContainer', e => {
         if (e.target.closest('[data-no-toggle]')) return;
         const item = e.target.closest('.article-item');
         if (item) toggleArticleSelection(item.dataset.id);
     });
 
-    bindActivate('templatesGrid', (e) => {
+    bindActivate('templatesGrid', e => {
         const card = e.target.closest('.template-card');
         if (card) useTemplate(Number(card.dataset.id));
     });
 
-    document.getElementById('savedList').addEventListener('click', (e) => {
+    document.getElementById('savedList').addEventListener('click', e => {
         const btn = e.target.closest('button[data-action]');
         if (!btn) return;
         const id = Number(btn.dataset.id);
@@ -305,7 +301,7 @@ function bindEvents() {
     });
 
     // تغيير حالة المعالجة من القائمة المنسدلة على بطاقة الرد (مستمع مفوَّض).
-    document.getElementById('savedList').addEventListener('change', (e) => {
+    document.getElementById('savedList').addEventListener('change', e => {
         const select = e.target.closest('select[data-action="status"]');
         if (!select) return;
         const updated = setResponseStatus(Number(select.dataset.id), select.value);
@@ -374,30 +370,24 @@ async function clearArchive() {
 async function importArchive(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > MAX_IMPORT_BYTES) {
-        showToast('الملف أكبر من ٥ ميجابايت — تعذّر الاستيراد');
-        e.target.value = '';
-        return;
-    }
-    try {
-        const parsed = JSON.parse(await file.text());
-        const added = importResponses(parsed);
-        if (added === -1) throw new Error('not-array');
-        if (added === null) {
-            showToast('تعذّر الاستيراد: امتلأت مساحة التخزين المحلية');
-        } else {
-            refreshSavedList();
-            const purged = takeLastPurgedCount();
-            if (purged > 0) {
-                showToast(`أُضيف ${added} رد، وحُذف ${purged} تجاوز مدة الاحتفاظ`);
-            } else {
-                showToast(added > 0 ? `تمت إضافة ${added} رد إلى الأرشيف` : 'لا توجد ردود جديدة في الملف');
-            }
-        }
-    } catch {
-        showToast('ملف غير صالح');
-    }
+    const parsed = await readJsonFile(file);
     e.target.value = '';
+    if (parsed === null) return;
+
+    const added = importResponses(parsed);
+    if (added === -1) {
+        showToast('ملف غير صالح');
+    } else if (added === null) {
+        showToast('تعذّر الاستيراد: امتلأت مساحة التخزين المحلية');
+    } else {
+        refreshSavedList();
+        const purged = takeLastPurgedCount();
+        if (purged > 0) {
+            showToast(`أُضيف ${added} رد، وحُذف ${purged} تجاوز مدة الاحتفاظ`);
+        } else {
+            showToast(added > 0 ? `تمت إضافة ${added} رد إلى الأرشيف` : 'لا توجد ردود جديدة في الملف');
+        }
+    }
 }
 
 function analyzeMessage() {
@@ -408,11 +398,16 @@ function analyzeMessage() {
     }
 
     const normalizedMsg = normalizeArabic(message);
-    app.lastMessage = message;
-    app.lastKeywords = extractKeywords(normalizedMsg, app.synonymsMap);
-    app.lastDetectedIntents = detectIntent(normalizedMsg, app.intentPatterns);
-    app.lastAnalysisTone = detectTone(normalizedMsg, app.toneIndicators);
-    app.lastEntities = extractEntities(message);
+    app.analysis = {
+        message,
+        keywords: extractKeywords(normalizedMsg, app.synonymsMap),
+        intents: detectIntent(normalizedMsg, app.intentPatterns),
+        activeIntentIndex: 0,
+        activeIntent: null,
+        tone: detectTone(normalizedMsg, app.toneIndicators),
+        entities: extractEntities(message),
+        relevantArticles: [],
+    };
 
     app.currentFilter = 'all';
     renderCategoryFilter(store.getCategories(), 'all');
@@ -424,29 +419,38 @@ function analyzeMessage() {
 // يعيد بناء المواد والرد على أساس الموضوع المختار (الأول تلقائياً، أو ما ينقره
 // الموظف). النية المختارة تتصدر القائمة الممررة لأن الترجيح والرد يقرآن أولها.
 function applyIntentSelection(index) {
-    const intents = app.lastDetectedIntents || [];
+    const analysis = app.analysis;
+    if (!analysis) return 0;
+    const intents = analysis.intents;
     const active = Math.min(Math.max(index, 0), Math.max(intents.length - 1, 0));
     const ordered = intents.length ? [intents[active], ...intents.filter((_, i) => i !== active)] : [];
 
-    const relevantArticles = findRelevantArticles(store.getArticles(), app.lastKeywords || [], ordered);
+    const relevantArticles = findRelevantArticles(store.getArticles(), analysis.keywords, ordered);
 
     renderAnalysis({
-        foundKeywords: app.lastKeywords || [],
+        foundKeywords: analysis.keywords,
         detectedIntents: intents,
         activeIntentIndex: active,
-        tone: app.lastAnalysisTone,
-        entities: app.lastEntities || [],
+        tone: analysis.tone,
+        entities: analysis.entities,
     });
     renderArticles(relevantArticles, app.selectedArticleIds);
 
-    app.activeIntentIndex = active;
-    app.lastAnalysisIntent = ordered[0] || null;
-    app.lastRelevantArticles = relevantArticles;
+    analysis.activeIntentIndex = active;
+    analysis.activeIntent = ordered[0] || null;
+    analysis.relevantArticles = relevantArticles;
 
-    setOutput(suggestResponse(
-        app.lastMessage, relevantArticles, ordered, app.lastEntities || [],
-        app.language, app.defaultResponse, app.lastAnalysisTone,
-    ));
+    setOutput(
+        suggestResponse(
+            analysis.message,
+            relevantArticles,
+            ordered,
+            analysis.entities,
+            app.language,
+            app.defaultResponse,
+            analysis.tone,
+        ),
+    );
     return relevantArticles.length;
 }
 
@@ -467,14 +471,27 @@ function addSelectedArticleToOutput() {
         return;
     }
     let text = document.getElementById('finalOutput').value;
+    let added = 0;
     app.selectedArticleIds.forEach(id => {
         const article = store.findArticle(id);
-        if (article && !text.includes(article.number)) {
-            text += `\n\n📌 ${article.number}:\n"${article.text}"`;
-        }
+        if (!article) return;
+        // التكرار يُكشف بالعلامة التي يضعها هذا المسار نفسه، لا بورود الرقم في أي مكان:
+        // «المادة 1/1» جزء من «المادة 1/11»، فالبحث عن الرقم وحده كان يتخطاها بصمت.
+        const marker = articleMarker(article);
+        if (text.includes(marker)) return;
+        text += `\n\n${marker}\n"${article.text}"`;
+        added++;
     });
+    if (added === 0) {
+        showToast('المواد المختارة مضافة إلى الرد مسبقاً');
+        return;
+    }
     setOutput(text);
-    showToast('تمت إضافة المواد المختارة');
+    showToast(`تمت إضافة ${formatNumber(added)} مادة إلى الرد`);
+}
+
+function articleMarker(article) {
+    return `📌 ${article.number}:`;
 }
 
 function handleImprove() {
@@ -511,10 +528,11 @@ function handleSave() {
         showToast('لا يوجد رد للحفظ');
         return;
     }
-    const category = app.lastAnalysisIntent ? app.lastAnalysisIntent.label : null;
+    const analysis = app.analysis;
+    const category = analysis && analysis.activeIntent ? analysis.activeIntent.label : null;
     const extras = {
-        tone: app.lastAnalysisTone ? app.lastAnalysisTone.primary : null,
-        urgent: Boolean(app.lastAnalysisTone && app.lastAnalysisTone.urgent),
+        tone: analysis ? analysis.tone.primary : null,
+        urgent: Boolean(analysis && analysis.tone.urgent),
     };
     if (!addResponse(output, category, extras)) {
         showToast('تعذّر الحفظ: امتلأت مساحة التخزين، احذف بعض الردود القديمة');
@@ -544,7 +562,9 @@ function clearInput() {
     document.getElementById('userResponse').value = '';
     setOutput('');
     document.getElementById('analysisBox').classList.remove('show');
-    app.lastAnalysisTone = null;
+    // التحليل كله يُمسح دفعة واحدة: رقم المستفيد السابق أو فئته لا تنتقل إلى
+    // القالب أو الرد المحفوظ التالي.
+    app.analysis = null;
     app.selectedArticleIds = [];
     document.querySelectorAll('.article-item').forEach(el => {
         el.classList.remove('selected');
@@ -564,7 +584,10 @@ function loadSavedResponseToOutput(id) {
 async function deleteSavedResponse(id) {
     const ok = await confirmDialog('هل أنت متأكد من حذف هذا الرد؟', { confirmLabel: 'حذف' });
     if (!ok) return;
-    deleteResponse(id);
+    if (!deleteResponse(id)) {
+        showToast('تعذّر حذف الرد: تعذّرت الكتابة في التخزين المحلي');
+        return;
+    }
     refreshSavedList();
     showToast('تم حذف الرد');
 }
@@ -574,9 +597,8 @@ function filterByCategory(category) {
     document.querySelectorAll('.category-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.category === category);
     });
-    const list = category === 'all'
-        ? store.getArticles()
-        : store.getArticles().filter(a => a.category === category);
+    const list =
+        category === 'all' ? store.getArticles() : store.getArticles().filter(a => a.category === category);
     renderArticles(list, app.selectedArticleIds);
 }
 
@@ -584,20 +606,23 @@ function searchArticles() {
     const query = document.getElementById('articleSearch').value.trim();
     if (!query) {
         // إفراغ البحث يعيد آخر نتائج تحليل بدل استبدالها بكل المواد بلا ترتيب صلة.
-        if (app.currentFilter === 'all' && app.lastRelevantArticles) {
-            renderArticles(app.lastRelevantArticles, app.selectedArticleIds);
+        if (app.currentFilter === 'all' && app.analysis) {
+            renderArticles(app.analysis.relevantArticles, app.selectedArticleIds);
         } else {
             filterByCategory(app.currentFilter);
         }
         return;
     }
     const normalizedQuery = normalizeArabic(query);
-    const results = store.getArticles().filter(article =>
-        article._normText.includes(normalizedQuery) ||
-        article._normTitle.includes(normalizedQuery) ||
-        article._normNumber.includes(normalizedQuery) ||
-        article._normKeywords.some(k => k.includes(normalizedQuery)),
-    );
+    const results = store
+        .getArticles()
+        .filter(
+            article =>
+                article._normText.includes(normalizedQuery) ||
+                article._normTitle.includes(normalizedQuery) ||
+                article._normNumber.includes(normalizedQuery) ||
+                article._normKeywords.some(k => k.includes(normalizedQuery)),
+        );
     renderArticles(results, app.selectedArticleIds);
 }
 
@@ -608,7 +633,7 @@ function useTemplate(id) {
     // تعبئة رقم الطلب/الدعوى تلقائياً من آخر تحليل. التواريخ تُترك للموظف عمداً:
     // تاريخ الرسالة الواردة ليس بالضرورة التاريخ المقصود في الرد الرسمي.
     let text = template.text;
-    const ref = app.lastEntities.find(en => en.type === 'رقم طلب/مذكرة');
+    const ref = app.analysis && app.analysis.entities.find(en => en.type === 'رقم طلب/مذكرة');
     if (ref) {
         text = text.replaceAll('[رقم الطلب]', ref.value).replaceAll('[رقم الدعوى]', ref.value);
     }
@@ -640,10 +665,14 @@ function switchTab(tab) {
 function renderShortcutsList() {
     const container = document.getElementById('shortcutsList');
     if (!container) return;
-    container.innerHTML = getShortcutsList().map(s => `
+    container.innerHTML = getShortcutsList()
+        .map(
+            s => `
         <div class="shortcut-row">
             <div class="desc">${s.desc}</div>
             <div class="keys">${s.keys.map(k => `<kbd>${k}</kbd>`).join(' + ')}</div>
         </div>
-    `).join('');
+    `,
+        )
+        .join('');
 }

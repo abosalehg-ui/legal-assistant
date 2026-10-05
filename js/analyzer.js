@@ -14,24 +14,26 @@ const EASTERN_DIGITS = /[٠-٩۰-۹]/g;
 function toLatinDigits(text) {
     return text.replace(EASTERN_DIGITS, d => {
         const code = d.charCodeAt(0);
-        return String((code >= 0x06F0 ? code - 0x06F0 : code - 0x0660));
+        return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
     });
 }
 
 export function normalizeArabic(text) {
-    return toLatinDigits(String(text))
-        .replace(/[إأآٱ]/g, 'ا')
-        .replace(/ى/g, 'ي')
-        .replace(/ة/g, 'ه')
-        .replace(/ؤ/g, 'و')
-        .replace(/ئ/g, 'ي')
-        // التشكيل والهمزات الفوقية والألف الخنجرية وعلامات الاتجاه الصفرية العرض
-        .replace(/[\u064B-\u0655\u0670\u200B-\u200F\u061C]/g, '')
-        .replace(/ـ/g, '')
-        // المدّ التعبيري: «متىىىى» و«ضرووووري» شائعان في رسائل الشكوى — يُردّان للأصل.
-        // ثلاثة فأكثر فقط: العربية تعرف تكرار حرفين (مثل «الله») ولا تعرف ثلاثة.
-        .replace(/([ء-ي])\1{2,}/g, '$1')
-        .toLowerCase();
+    return (
+        toLatinDigits(String(text))
+            .replace(/[إأآٱ]/g, 'ا')
+            .replace(/ى/g, 'ي')
+            .replace(/ة/g, 'ه')
+            .replace(/ؤ/g, 'و')
+            .replace(/ئ/g, 'ي')
+            // التشكيل والهمزات الفوقية والألف الخنجرية وعلامات الاتجاه الصفرية العرض
+            .replace(/[\u064B-\u0655\u0670\u200B-\u200F\u061C]/g, '')
+            .replace(/ـ/g, '')
+            // المدّ التعبيري: «متىىىى» و«ضرووووري» شائعان في رسائل الشكوى — يُردّان للأصل.
+            // ثلاثة فأكثر فقط: العربية تعرف تكرار حرفين (مثل «الله») ولا تعرف ثلاثة.
+            .replace(/([ء-ي])\1{2,}/g, '$1')
+            .toLowerCase()
+    );
 }
 
 // الكلمات المطبَّعة تُحسب مرة واحدة لكل مصفوفة بيانات (هوية المصفوفة ثابتة طوال الجلسة)
@@ -69,7 +71,9 @@ export function detectIntent(normalizedText, intentPatterns) {
         const matched = collectMatches(normalizedText, matcher, normalizedKeys(pattern.keywords));
         if (matched.size === 0) return;
         let weight = 0;
-        matched.forEach(phrase => { weight += matchWeight(phrase); });
+        matched.forEach(phrase => {
+            weight += matchWeight(phrase);
+        });
         detected.push({
             id: pattern.id,
             label: pattern.label,
@@ -116,8 +120,7 @@ export function detectTone(normalizedText, toneIndicators) {
     let best = null;
     for (const [tone, score] of Object.entries(scores)) {
         if (score <= 0) continue;
-        if (!best || score > best.score
-            || (score === best.score && entries[tone].priority > best.priority)) {
+        if (!best || score > best.score || (score === best.score && entries[tone].priority > best.priority)) {
             best = { tone, score, priority: entries[tone].priority };
         }
     }
@@ -134,16 +137,14 @@ export function detectTone(normalizedText, toneIndicators) {
 // أنماط الأرقام تُطبَّق على النص بعد ردّ الأرقام الشرقية إلى اللاتينية، وتقبل الفواصل
 // التي يكتبها الناس داخل الأرقام (مسافة أو شرطة في رقم الجوال مثلاً).
 const SEPARATORS = /[\s\u00A0-]/g;
-const PHONE_PATTERNS = [
-    /(?:\+|00)?966[\s-]?5\d(?:[\s-]?\d){7}/g,
-    /\b05(?:[\s-]?\d){8}\b/g,
-];
+const PHONE_PATTERNS = [/(?:\+|00)?966[\s-]?5\d(?:[\s-]?\d){7}/g, /\b05(?:[\s-]?\d){8}\b/g];
 // رقم بعد كلمة دالة يُلتقط ولو كان قصيراً: «طلب رقم 45219» لا يبلغ سبع خانات
 // لكنه رقم مرجعي بلا شك، وهو أكثر ما يُلصق في رسائل المستفيدين.
-const REF_CONTEXT = /(?:رقم|برقم|طلب|معامله|معاملة|قضيه|قضية|دعوى|مذكره|مذكرة|صك|ملف|بلاغ|شكوى)\s*(?:[:#]|رقم\s*)?\s*(\d{4,})/g;
+const REF_CONTEXT =
+    /(?:رقم|برقم|طلب|معامله|معاملة|قضيه|قضية|دعوى|مذكره|مذكرة|صك|ملف|بلاغ|شكوى)\s*(?:[:#]|رقم\s*)?\s*(\d{4,})/g;
 
 export function extractEntities(originalText) {
-    const text = toLatinDigits(String(originalText));
+    let text = toLatinDigits(String(originalText));
     const entities = [];
     const seen = new Set();
     const add = (type, value) => {
@@ -156,9 +157,14 @@ export function extractEntities(originalText) {
     // الأنواع الأكثر تحديداً أولاً حتى لا يُصنّف الرقم نفسه مرتين (جوال/هوية ثم رقم طلب).
     // الفواصل وبادئة الاتصال الدولي تُحذف حتى يخرج الرقم بصيغة واحدة مهما كُتب:
     // «+966 51 234 5678» و«00966512345678» رقم واحد لا رقمان.
+    //
+    // مقطع الجوال يُمحى من النص بعد التقاطه (بمسافات بنفس الطول): مقارنة القيمة المطبّعة
+    // لا تكفي، لأن «00966512345678» تخرج جوالاً بلا «00» ثم يلتقطها النمط العام \d{7,}
+    // بصيغتها الخام فتُصنَّف «رقم طلب» وتُكتب في الخطاب الرسمي كمرجع.
     PHONE_PATTERNS.forEach(pattern => {
-        (text.match(pattern) || []).forEach(raw => {
+        text = text.replace(pattern, raw => {
             add('رقم جوال', raw.replace(SEPARATORS, '').replace(/^(?:\+|00)/, ''));
+            return ' '.repeat(raw.length);
         });
     });
     (text.match(/\b[12]\d{9}\b/g) || []).forEach(id => add('رقم هوية', id));

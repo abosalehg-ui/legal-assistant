@@ -17,7 +17,25 @@ export function escapeRegExp(text) {
 // اللواحق المتصلة: ضمائر الملكية/المفعول وعلامات الجمع والمثنى. المرتبة تنازلياً
 // بالطول لأن التبادل يختار أول بديل يطابق («كم» قبل «ك» وإلا بقيت الميم بلا مطابقة).
 // تُكرَّر حتى مرتين لتغطية التركيب الشائع: جمع + ضمير («طلباتكم» = طلب + ات + كم).
-const SUFFIXES = ['كما', 'هما', 'تين', 'تان', 'كم', 'كن', 'هم', 'هن', 'نا', 'ها', 'ات', 'ين', 'ون', 'ان', 'ي', 'ك', 'ه'];
+const SUFFIXES = [
+    'كما',
+    'هما',
+    'تين',
+    'تان',
+    'كم',
+    'كن',
+    'هم',
+    'هن',
+    'نا',
+    'ها',
+    'ات',
+    'ين',
+    'ون',
+    'ان',
+    'ي',
+    'ك',
+    'ه',
+];
 
 // المسافة داخل العبارة متعددة الكلمات تُطابق أي فراغ (مسافة مكررة أو سطر جديد):
 // رسائل المستفيدين لا تلتزم بمسافة واحدة، والعبارة «لم يتم الرد» يجب أن تصمد أمام ذلك.
@@ -59,9 +77,7 @@ export function compileMatcher(phrases, { prefix = false, suffix = false, normal
     const entries = Array.from(phrases, raw => ({ raw, key: normalize ? normalize(raw) : raw }));
     if (entries.length === 0) return null;
     entries.sort((a, b) => b.key.length - a.key.length);
-    const alternatives = entries
-        .map(e => toAlternative(e.key, suffix && e.raw.endsWith('ة')))
-        .join('|');
+    const alternatives = entries.map(e => toAlternative(e.key, suffix && e.raw.endsWith('ة'))).join('|');
     const suffixes = suffix ? `((?:${SUFFIXES.join('|')}){0,2})` : '()';
     return new RegExp(
         `(^|[^${ARABIC_LETTER}])${prefixGroup(prefix)}(${alternatives})${suffixes}(?=[^${ARABIC_LETTER}]|$)`,
