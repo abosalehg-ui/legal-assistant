@@ -61,8 +61,14 @@ function resetDom() {
 beforeEach(resetDom);
 
 const article = (over = {}) => ({
-    id: 'a1', number: 'المادة 1', title: 'عنوان', text: 'نص المادة',
-    category: 'التبليغ', keywords: [], sourceUrl: '', ...over,
+    id: 'a1',
+    number: 'المادة 1',
+    title: 'عنوان',
+    text: 'نص المادة',
+    category: 'التبليغ',
+    keywords: [],
+    sourceUrl: '',
+    ...over,
 });
 
 test('escapeHtml: يهرّب الأحرف الخمسة بما فيها الاقتباس (سياق الخصائص)', () => {
@@ -128,7 +134,16 @@ test('renderSavedResponses/renderTemplates: تهريب المعرّفات وال
 
 test('renderSavedResponses: يعرض شارات النبرة والاستعجال وقائمة الحالة بالخيار الصحيح', () => {
     renderSavedResponses([
-        { id: 1, text: 'شكوى محفوظة', preview: 'شكوى محفوظة', date: '١', tone: 'complaint', urgent: true, status: 'in-progress', category: 'شكوى من تأخر الرد' },
+        {
+            id: 1,
+            text: 'شكوى محفوظة',
+            preview: 'شكوى محفوظة',
+            date: '١',
+            tone: 'complaint',
+            urgent: true,
+            status: 'in-progress',
+            category: 'شكوى من تأخر الرد',
+        },
         { id: 2, text: 'رد قديم بلا حقول', preview: 'رد قديم بلا حقول', date: '٢' },
     ]);
     const items = document.querySelectorAll('.saved-item');
@@ -149,14 +164,18 @@ test('renderSavedResponses: القائمة المصفاة تعرض رسالة «
 test('renderAnalysis: يعرض label القادم من JSON ولا يدّعي «محايدة» لنبرة غير معروفة', () => {
     renderAnalysis({
         tone: { primary: 'gratitude', label: 'شكر وثناء', urgent: false },
-        detectedIntents: [], entities: [], foundKeywords: [],
+        detectedIntents: [],
+        entities: [],
+        foundKeywords: [],
     });
     assert.ok(document.getElementById('analysisContent').textContent.includes('شكر وثناء'));
 
     // نبرة غير معروفة بلا label: يظهر مفتاحها بدل «محايدة».
     renderAnalysis({
         tone: { primary: 'gratitude', urgent: false },
-        detectedIntents: [], entities: [], foundKeywords: [],
+        detectedIntents: [],
+        entities: [],
+        foundKeywords: [],
     });
     assert.ok(document.getElementById('analysisContent').textContent.includes('gratitude'));
     assert.ok(!document.getElementById('analysisContent').textContent.includes('محايدة'));
@@ -202,7 +221,9 @@ test('openModal/closeModal: يفتح ويعيد التركيز للعنصر ال
 
 test('closeAllModals: يغلق كل المفتوح ويُطلق modal:close', () => {
     let closed = 0;
-    document.getElementById('testModal').addEventListener('modal:close', () => { closed++; });
+    document.getElementById('testModal').addEventListener('modal:close', () => {
+        closed++;
+    });
     openModal('testModal');
     closeAllModals();
     assert.equal(closed, 1);

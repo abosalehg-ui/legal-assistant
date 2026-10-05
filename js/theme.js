@@ -1,9 +1,15 @@
 // إدارة الوضع الفاتح/الداكن.
 
+import { readString, writeString } from './safe-storage.js';
+
 const KEY = 'theme';
 
+// القراءة عبر safe-storage: هذه الوحدة تُستدعى أول ما يُحمَّل app.js، والوصول المباشر
+// إلى localStorage يرمي SecurityError حين يحظر المتصفح تخزين المواقع — فكان التطبيق
+// كله يتوقف قبل أن يبدأ بسبب تفضيل لون.
 export function getStoredTheme() {
-    return localStorage.getItem(KEY);
+    const stored = readString(KEY, null);
+    return stored === 'dark' || stored === 'light' ? stored : null;
 }
 
 export function getPreferredTheme() {
@@ -28,11 +34,8 @@ export function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme') || 'light';
     const next = current === 'dark' ? 'light' : 'dark';
     applyTheme(next);
-    try {
-        localStorage.setItem(KEY, next);
-    } catch {
-        // فشل حفظ التفضيل لا يمنع تبديل الوضع في الجلسة الحالية
-    }
+    // فشل حفظ التفضيل لا يمنع تبديل الوضع في الجلسة الحالية.
+    writeString(KEY, next);
     return next;
 }
 

@@ -182,15 +182,15 @@ input[type="text"], input[type="url"] {
 .btn-outline:hover { background: var(--primary); color: #fff; }
 
 .btn-danger {
-    background: #c0392b;
+    background: var(--danger);
     color: #fff;
 }
-.btn-danger:hover { background: #a93225; }
+.btn-danger:hover { background: var(--danger-hover); }
 
 .articles-container {
     max-height: 400px;
     overflow-y: auto;
-    padding-left: 0.5rem;
+    padding-inline-end: 0.5rem;
 }
 
 .articles-container::-webkit-scrollbar { width: 6px; }
@@ -200,7 +200,7 @@ input[type="text"], input[type="url"] {
 .article-item {
     background: var(--gradient-card-soft);
     border: 1px solid var(--border);
-    border-right: 4px solid var(--primary);
+    border-inline-start: 4px solid var(--primary);
     border-radius: var(--radius);
     padding: 1rem;
     margin-bottom: 1rem;
@@ -211,12 +211,12 @@ input[type="text"], input[type="url"] {
 .article-item:hover {
     transform: translateX(-5px);
     box-shadow: var(--shadow);
-    border-right-color: var(--secondary);
+    border-inline-start-color: var(--secondary);
 }
 
 .article-item.selected {
     background: var(--selected-bg);
-    border-right-color: var(--secondary);
+    border-inline-start-color: var(--secondary);
 }
 
 .article-number {
@@ -238,12 +238,12 @@ input[type="text"], input[type="url"] {
     border-radius: 10px;
     font-size: 0.7rem;
     font-weight: 700;
-    margin-right: 0.5rem;
+    margin-inline-start: 0.5rem;
 }
 
 .article-source {
     display: inline-block;
-    margin-right: 0.5rem;
+    margin-inline-start: 0.5rem;
     font-size: 0.85rem;
     text-decoration: none;
     color: var(--primary-light);
@@ -345,7 +345,7 @@ input[type="text"], input[type="url"] {
     margin-bottom: 0.75rem;
     padding: 0.5rem 0.75rem;
     background: var(--hint-bg);
-    border-right: 3px solid var(--secondary);
+    border-inline-start: 3px solid var(--secondary);
     border-radius: 6px;
     font-size: 0.85rem;
     color: var(--text-secondary);
@@ -670,7 +670,7 @@ input[type="text"], input[type="url"] {
 
 .hidden { display: none !important; }
 .mt-1 { margin-top: 1rem; }
-.required { color: #c0392b; }
+.required { color: var(--danger); }
 
 .divider {
     margin: 1.5rem 0;
@@ -986,4 +986,6 @@ input[type="text"], input[type="url"] {
     .btn-group { flex-direction: column; }
     .btn { justify-content: center; }
     .form-row { grid-template-columns: 1fr; }
+    /* هدف لمس 44px على الجوال (كانت 31px). */
+    .category-btn { min-height: 44px; }
 }

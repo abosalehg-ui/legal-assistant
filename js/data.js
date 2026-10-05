@@ -18,9 +18,12 @@ export function isSafeUrl(url) {
     }
 }
 
-// تحقق نوعي موحد للمادة (النموذج والاستيراد): تعيد نسخة نظيفة أو null.
-export function validateArticle(raw) {
-    if (!raw || typeof raw !== 'object') return null;
+// تحقق نوعي موحد للمادة (النموذج والاستيراد والتخزين): يعيد { article, error }.
+// error: 'invalid' (ليس كائناً) | 'missing' (حقل أساسي فارغ) | 'unsafe-url'.
+// strictUrl: النموذج يرفض الرابط غير الآمن ليُصلحه الموظف، بينما الاستيراد يجرّده
+// بصمت ويقبل المادة — ملف كامل لا يُرفض بسبب رابط واحد.
+export function checkArticle(raw, { strictUrl = false } = {}) {
+    if (!raw || typeof raw !== 'object') return { article: null, error: 'invalid' };
 
     const asText = v => (typeof v === 'string' ? v.trim() : '');
     const id = asText(raw.id);
@@ -28,17 +31,22 @@ export function validateArticle(raw) {
     const title = asText(raw.title);
     const category = asText(raw.category);
     const text = asText(raw.text);
-    if (!id || !number || !title || !category || !text) return null;
+    if (!id || !number || !title || !category || !text) return { article: null, error: 'missing' };
 
-    const keywords = Array.isArray(raw.keywords)
-        ? raw.keywords.map(asText).filter(Boolean)
-        : [];
-    const sourceUrl = isSafeUrl(asText(raw.sourceUrl)) ? asText(raw.sourceUrl) : '';
+    const keywords = Array.isArray(raw.keywords) ? raw.keywords.map(asText).filter(Boolean) : [];
+    const rawUrl = asText(raw.sourceUrl);
+    if (rawUrl && !isSafeUrl(rawUrl) && strictUrl) return { article: null, error: 'unsafe-url' };
+    const sourceUrl = isSafeUrl(rawUrl) ? rawUrl : '';
 
     const article = { id, number, title, category, keywords, sourceUrl, text };
     const lastVerified = asText(raw.lastVerified);
     if (lastVerified) article.lastVerified = lastVerified;
-    return article;
+    return { article, error: null };
+}
+
+// الصيغة المختصرة: نسخة نظيفة أو null.
+export function validateArticle(raw) {
+    return checkArticle(raw).article;
 }
 
 // نسخة نظيفة للتصدير: بلا الحقول الداخلية المطبّعة (_norm*) ولا درجة التطابق،

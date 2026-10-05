@@ -7,9 +7,10 @@
   "scripts": {
     "serve": "python3 -m http.server 8000",
     "test": "node --test tests/*.test.js",
-    "lint": "eslint js tests sw.js eslint.config.js",
+    "lint": "eslint js tests scripts sw.js eslint.config.js",
     "format": "prettier --write \"{js,tests,css,data}/**/*\" \"*.{js,json,md,html}\"",
-    "format:check": "prettier --check \"{js,tests}/**/*.js\""
+    "format:check": "prettier --check \"{js,tests,scripts}/**/*.{js,mjs}\"",
+    "sw:hash": "node scripts/sw-hash.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

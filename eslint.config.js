@@ -20,7 +20,7 @@ export default [
         },
     },
     {
-        files: ['tests/**/*.js', 'eslint.config.js'],
+        files: ['tests/**/*.js', 'scripts/**/*.mjs', 'eslint.config.js'],
         languageOptions: {
             ecmaVersion: 2023,
             sourceType: 'module',
@@ -29,7 +29,7 @@ export default [
     },
     {
         // اختبارات الـ DOM تركّب jsdom على globalThis، فتصبح globals المتصفح متاحة فيها.
-        files: ['tests/ui.test.js'],
+        files: ['tests/ui.test.js', 'tests/app.test.js'],
         languageOptions: {
             globals: { ...globals.node, ...globals.browser },
         },

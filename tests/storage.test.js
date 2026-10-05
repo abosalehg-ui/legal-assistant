@@ -108,7 +108,7 @@ test('addResponse: يحترم الحد الأقصى للأرشيف', () => {
 test('deleteResponse و findResponse', () => {
     const a = addResponse('أ');
     assert.equal(findResponse(a.id).text, 'أ');
-    deleteResponse(a.id);
+    assert.equal(deleteResponse(a.id), true);
     assert.equal(findResponse(a.id), undefined);
 });
 
@@ -162,12 +162,18 @@ test('applyRetention: يُسقط ما تجاوز المدة ويُبقي الب�
     ];
     const { list: kept, purged } = applyRetention(list, 30, now);
     assert.equal(purged, 1);
-    assert.deepEqual(kept.map(r => r.id), [1, 3]);
+    assert.deepEqual(
+        kept.map(r => r.id),
+        [1, 3],
+    );
 });
 
 test('applyRetention: القيمة 0 تعني بلا حد فلا تحذف شيئاً', () => {
     const now = Date.now();
-    const list = [{ id: 1, timestamp: 1 }, { id: 2, timestamp: now }];
+    const list = [
+        { id: 1, timestamp: 1 },
+        { id: 2, timestamp: now },
+    ];
     const { list: kept, purged } = applyRetention(list, 0, now);
     assert.equal(purged, 0);
     assert.equal(kept.length, 2);
@@ -175,19 +181,20 @@ test('applyRetention: القيمة 0 تعني بلا حد فلا تحذف شيئ
 
 test('applyRetention: يعتمد id عند غياب timestamp', () => {
     const now = Date.now();
-    const { list: kept, purged } = applyRetention(
-        [{ id: now - DAY }, { id: now - 90 * DAY }], 30, now,
-    );
+    const { list: kept, purged } = applyRetention([{ id: now - DAY }, { id: now - 90 * DAY }], 30, now);
     assert.equal(purged, 1);
     assert.equal(kept.length, 1);
 });
 
 test('loadSavedResponses: يحذف المنتهي ويُبلّغ بعدده مرة واحدة فقط', () => {
     const now = Date.now();
-    globalThis.localStorage.setItem('savedResponses', JSON.stringify([
-        { id: 1, text: 'قديم', timestamp: now - 60 * DAY },
-        { id: 2, text: 'حديث', timestamp: now - DAY },
-    ]));
+    globalThis.localStorage.setItem(
+        'savedResponses',
+        JSON.stringify([
+            { id: 1, text: 'قديم', timestamp: now - 60 * DAY },
+            { id: 2, text: 'حديث', timestamp: now - DAY },
+        ]),
+    );
     const list = loadSavedResponses();
     assert.equal(list.length, 1);
     assert.equal(list[0].text, 'حديث');
@@ -212,9 +219,12 @@ test('getRetentionDays/setRetentionDays: افتراضي سليم ويرفض ال
 test('الترحيل عند القراءة: عنصر قديم بلا حقول الحالة يحصل على افتراضات آمنة', () => {
     const now = Date.now();
     // عنصر بالبنية القديمة تماماً (قبل إضافة tone/urgent/status).
-    globalThis.localStorage.setItem('savedResponses', JSON.stringify([
-        { id: now, text: 'قديم', category: 'فئة', date: '١', timestamp: now, preview: 'قديم' },
-    ]));
+    globalThis.localStorage.setItem(
+        'savedResponses',
+        JSON.stringify([
+            { id: now, text: 'قديم', category: 'فئة', date: '١', timestamp: now, preview: 'قديم' },
+        ]),
+    );
     const item = loadSavedResponses()[0];
     assert.equal(item.status, DEFAULT_STATUS);
     assert.equal(item.tone, null);
@@ -265,21 +275,50 @@ test('importResponses: الحالة الصالحة تُحفظ والشاذة ت�
 
 test('filterSavedResponses: توليفات النص والحالة والنبرة والفئة', () => {
     const list = [
-        { id: 1, text: 'تأخر الرد على طلبي', status: 'new', tone: 'complaint', category: 'شكوى من تأخر الرد' },
-        { id: 2, text: 'استفسار عن موعد', status: 'closed', tone: 'inquiry', category: 'استفسار عن موعد جلسة' },
+        {
+            id: 1,
+            text: 'تأخر الرد على طلبي',
+            status: 'new',
+            tone: 'complaint',
+            category: 'شكوى من تأخر الرد',
+        },
+        {
+            id: 2,
+            text: 'استفسار عن موعد',
+            status: 'closed',
+            tone: 'inquiry',
+            category: 'استفسار عن موعد جلسة',
+        },
         { id: 3, text: 'رد قديم بلا حقول' },
     ];
     assert.equal(filterSavedResponses(list, {}).length, 3, 'بلا تصفية يعيد الكل');
-    assert.deepEqual(filterSavedResponses(list, { status: 'new' }).map(r => r.id), [1, 3], 'القديم يُعامل كجديد');
-    assert.deepEqual(filterSavedResponses(list, { tone: 'inquiry' }).map(r => r.id), [2]);
-    assert.deepEqual(filterSavedResponses(list, { tone: 'neutral' }).map(r => r.id), [3], 'بلا نبرة = محايدة');
-    assert.deepEqual(filterSavedResponses(list, { query: 'تأخر' }).map(r => r.id), [1]);
+    assert.deepEqual(
+        filterSavedResponses(list, { status: 'new' }).map(r => r.id),
+        [1, 3],
+        'القديم يُعامل كجديد',
+    );
+    assert.deepEqual(
+        filterSavedResponses(list, { tone: 'inquiry' }).map(r => r.id),
+        [2],
+    );
+    assert.deepEqual(
+        filterSavedResponses(list, { tone: 'neutral' }).map(r => r.id),
+        [3],
+        'بلا نبرة = محايدة',
+    );
+    assert.deepEqual(
+        filterSavedResponses(list, { query: 'تأخر' }).map(r => r.id),
+        [1],
+    );
     assert.deepEqual(
         filterSavedResponses(list, { query: 'الرد', status: 'new', tone: 'complaint' }).map(r => r.id),
         [1],
         'التصفيات تتقاطع',
     );
-    assert.deepEqual(filterSavedResponses(list, { category: 'استفسار عن موعد جلسة' }).map(r => r.id), [2]);
+    assert.deepEqual(
+        filterSavedResponses(list, { category: 'استفسار عن موعد جلسة' }).map(r => r.id),
+        [2],
+    );
 });
 
 test('computeStats: توزيع النبرة والحالة وعدّاد المفتوح', () => {
@@ -313,4 +352,36 @@ test('computeStats: اليوم والأسبوع والفئة الأكثر تكر
     assert.equal(stats.week, 3);
     assert.equal(stats.topCategory, 'جلسات');
     assert.equal(computeStats([]).topCategory, '—');
+});
+
+test('filterSavedResponses: البحث يطبّع العربية (التاء المربوطة، الهمزات، الأرقام الهندية)', () => {
+    const list = [
+        { id: 1, text: 'موعد الجلسه القادمة للطلب 4521' },
+        { id: 2, text: 'إغلاق الطلب' },
+    ];
+    assert.deepEqual(
+        filterSavedResponses(list, { query: 'الجلسة' }).map(r => r.id),
+        [1],
+    );
+    assert.deepEqual(
+        filterSavedResponses(list, { query: 'اغلاق' }).map(r => r.id),
+        [2],
+    );
+    assert.deepEqual(
+        filterSavedResponses(list, { query: '٤٥٢١' }).map(r => r.id),
+        [1],
+    );
+});
+
+test('deleteResponse: يعيد false إذا تعذّرت الكتابة', () => {
+    const a = addResponse('للحذف');
+    const original = globalThis.localStorage.setItem;
+    globalThis.localStorage.setItem = () => {
+        throw new Error('QuotaExceededError');
+    };
+    try {
+        assert.equal(deleteResponse(a.id), false);
+    } finally {
+        globalThis.localStorage.setItem = original;
+    }
 });

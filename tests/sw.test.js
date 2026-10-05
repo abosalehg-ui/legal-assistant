@@ -4,6 +4,8 @@
 
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { computeAssetsHash, readCoreAssets, readRecordedHash } from '../scripts/sw-hash.mjs';
 
 const ORIGIN = 'https://example.test';
 
@@ -29,7 +31,9 @@ function makeResponse(body, { status = 200 } = {}) {
         ok: status >= 200 && status < 300,
         status,
         body,
-        clone() { return makeResponse(body, { status }); },
+        clone() {
+            return makeResponse(body, { status });
+        },
     };
 }
 
@@ -41,13 +45,19 @@ const listeners = {};
 
 globalThis.self = {
     location: { origin: ORIGIN },
-    addEventListener: (type, fn) => { listeners[type] = fn; },
+    addEventListener: (type, fn) => {
+        listeners[type] = fn;
+    },
     skipWaiting: async () => {},
     clients: { claim: async () => {} },
 };
 globalThis.caches = {
     open: async () => fakeCache,
-    keys: async () => ['legal-assistant-v2', 'legal-assistant-v3'],
+    keys: async () => [
+        'legal-assistant-v2',
+        'legal-assistant-v3',
+        `legal-assistant-v4-${computeAssetsHash()}`,
+    ],
     delete: async () => true,
     match: async request => cacheStore.get(keyOf(request)),
 };
@@ -69,7 +79,12 @@ await import('../sw.js');
 // يشغّل معالج fetch ويعيد ما مُرِّر فعلياً إلى respondWith.
 async function handleFetch(request) {
     let responded;
-    listeners.fetch({ request, respondWith: value => { responded = value; } });
+    listeners.fetch({
+        request,
+        respondWith: value => {
+            responded = value;
+        },
+    });
     return responded === undefined ? undefined : await responded;
 }
 
@@ -96,7 +111,10 @@ test('طلب مستند فاشل يعطي صفحة HTML عربية بدل نص �
 test('الأصول الثابتة: النسخة المخزّنة تُعرض بلا لمس الشبكة', async () => {
     cacheStore.set('/css/styles.css', makeResponse('cached-css'));
     let networkCalls = 0;
-    networkHandler = () => { networkCalls++; return makeResponse('fresh-css'); };
+    networkHandler = () => {
+        networkCalls++;
+        return makeResponse('fresh-css');
+    };
 
     const response = await handleFetch(makeRequest('/css/styles.css'));
     assert.equal(response.body, 'cached-css');
@@ -136,18 +154,47 @@ test('لا يُخزَّن رد فاشل من الشبكة', async () => {
 
 test('يتجاهل غير GET والأصول الخارجية وسكربت الـ SW نفسه', async () => {
     assert.equal(await handleFetch(makeRequest('/api', { method: 'POST' })), undefined);
-    assert.equal(await handleFetch({
-        url: 'https://other.test/x.js', method: 'GET', mode: 'no-cors', headers: { get: () => '' },
-    }), undefined);
+    assert.equal(
+        await handleFetch({
+            url: 'https://other.test/x.js',
+            method: 'GET',
+            mode: 'no-cors',
+            headers: { get: () => '' },
+        }),
+        undefined,
+    );
     // تخزين sw.js نفسه يمنع وصول الإصدارات الجديدة
     assert.equal(await handleFetch(makeRequest('/sw.js')), undefined);
 });
 
 test('activate يمسح إصدارات الكاش القديمة فقط', async () => {
     const deleted = [];
-    globalThis.caches.delete = async key => { deleted.push(key); return true; };
+    globalThis.caches.delete = async key => {
+        deleted.push(key);
+        return true;
+    };
     let done;
-    listeners.activate({ waitUntil: promise => { done = promise; } });
+    listeners.activate({
+        waitUntil: promise => {
+            done = promise;
+        },
+    });
     await done;
-    assert.deepEqual(deleted, ['legal-assistant-v2'], 'الإصدار الحالي يبقى');
+    assert.deepEqual(deleted, ['legal-assistant-v2', 'legal-assistant-v3'], 'الإصدار الحالي يبقى');
+});
+
+// الحارس الذي غاب في PR #6: تعديل JS أو CSS بلا تحديث البصمة يُبقي المستخدمين الحاليين
+// على النسخة القديمة بلا أي إشارة. الحل عند الفشل:  npm run sw:hash
+test('ASSETS_HASH في sw.js تطابق محتوى الأصول الحالي', () => {
+    assert.equal(
+        readRecordedHash(),
+        computeAssetsHash(),
+        'تغيّرت أصول التطبيق ولم تُحدَّث البصمة — شغّل: npm run sw:hash',
+    );
+});
+
+test('كل ملفات CORE_ASSETS موجودة فعلاً (cache.addAll يفشل كله بملف واحد مفقود)', () => {
+    for (const asset of readCoreAssets()) {
+        assert.doesNotThrow(() => readFileSync(new URL(`../${asset}`, import.meta.url)), asset);
+    }
 });

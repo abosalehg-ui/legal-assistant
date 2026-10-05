@@ -2,7 +2,15 @@
 
 import { compileMatcher } from './matcher.js';
 
-export function suggestResponse(message, articles, intents, entities, language, defaultResponse = '', tone = null) {
+export function suggestResponse(
+    message,
+    articles,
+    intents,
+    entities,
+    language,
+    defaultResponse = '',
+    tone = null,
+) {
     let response = language.openings[0] + '\n\n';
 
     // النبرة تُكيّف الرد من البيانات لا من الكود: فقرة اعتذارية للشكوى مثلاً
@@ -66,13 +74,18 @@ export function improveLanguage(input, language) {
 
     // دالة استبدال بدل سلسلة '$1$2': تمنع تفسير أي '$' داخل النص الفصيح كمرجع مجموعة.
     if (colloquial) {
-        improved = improved.replace(colloquial, (match, before, wordPrefix, word) =>
-            before + wordPrefix + language.colloquialToFormal[toMapKey(word)]);
+        improved = improved.replace(
+            colloquial,
+            (match, before, wordPrefix, word) =>
+                before + wordPrefix + language.colloquialToFormal[toMapKey(word)],
+        );
     }
 
     if (legalTerms) {
-        improved = improved.replace(legalTerms, (match, before, wordPrefix, word) =>
-            before + language.legalTerms[toMapKey(word)]);
+        improved = improved.replace(
+            legalTerms,
+            (match, before, wordPrefix, word) => before + language.legalTerms[toMapKey(word)],
+        );
     }
 
     if (!improved.includes('السلام عليكم')) {

@@ -8,15 +8,15 @@ const language = {
     openings: ['السلام عليكم ورحمة الله وبركاته،\n\nنشكر لكم تواصلكم.'],
     closings: ['\n\nمع خالص التحية والتقدير.'],
     colloquialToFormal: {
-        'تروح': 'تذهب',
-        'بتلاقي': 'ستجد',
-        'اخوي': 'أخي الكريم',
-        'بكره': 'غداً',
+        تروح: 'تذهب',
+        بتلاقي: 'ستجد',
+        اخوي: 'أخي الكريم',
+        بكره: 'غداً',
         'ما وصلني': 'لم يصلني',
     },
     legalTerms: {
-        'المحكمه': 'الجهة العدلية المختصة',
-        'القضية': 'الدعوى',
+        المحكمه: 'الجهة العدلية المختصة',
+        القضية: 'الدعوى',
     },
 };
 
@@ -67,7 +67,10 @@ test('suggestResponse: نبرة الشكوى تدرج فقرة الاعتذار 
     assert.ok(out.indexOf('أولوية') < out.indexOf(langWithTones.closings[0].trim()), 'الاستعجال قبل الخاتمة');
 
     // استفسار غير عاجل: لا اعتذار ولا ملاحظة أولوية.
-    const inquiryOut = suggestResponse('رسالة', [], [], [], langWithTones, DEFAULT, { primary: 'inquiry', urgent: false });
+    const inquiryOut = suggestResponse('رسالة', [], [], [], langWithTones, DEFAULT, {
+        primary: 'inquiry',
+        urgent: false,
+    });
     assert.ok(!inquiryOut.includes('نعتذر لكم'));
     assert.ok(!inquiryOut.includes('أولوية طلبكم'));
 });
@@ -112,7 +115,7 @@ test('improveLanguage: يضيف الافتتاحية والخاتمة عند غ�
 test('improveLanguage: يختار العبارة الأطول لا الأقصر عند التداخل', () => {
     // التبادل يختار أول بديل مطابق، فالترتيب تنازلياً بالطول هو ما يضمن هذا السلوك.
     const lang = {
-        colloquialToFormal: { 'يعطيك العافية': 'شكراً جزيلاً', 'يعطيك': 'يمنحك' },
+        colloquialToFormal: { 'يعطيك العافية': 'شكراً جزيلاً', يعطيك: 'يمنحك' },
         legalTerms: {},
         openings: ['السلام عليكم'],
         closings: ['\n\nتقبلوا التقدير'],
@@ -125,7 +128,7 @@ test('improveLanguage: يختار العبارة الأطول لا الأقصر 
 test('improveLanguage: لا يعيد استبدال مخرج استبدال سابق (بلا تسلسل)', () => {
     // في التمرير المتعدد القديم كان مخرج «أ» يمكن أن يطابقه مفتاح «ب» لاحقاً.
     const lang = {
-        colloquialToFormal: { 'أول': 'ثاني', 'ثاني': 'ثالث' },
+        colloquialToFormal: { أول: 'ثاني', ثاني: 'ثالث' },
         legalTerms: {},
         openings: ['السلام عليكم'],
         closings: ['\n\nتقبلوا التقدير'],
@@ -137,7 +140,7 @@ test('improveLanguage: لا يعيد استبدال مخرج استبدال سا
 
 test('improveLanguage: يتعامل مع $ في النص الفصيح كنص لا كمرجع مجموعة', () => {
     const lang = {
-        colloquialToFormal: { 'مبلغ': 'قيمة $1 المطالبة' },
+        colloquialToFormal: { مبلغ: 'قيمة $1 المطالبة' },
         legalTerms: {},
         openings: ['السلام عليكم'],
         closings: ['\n\nتقبلوا التقدير'],
