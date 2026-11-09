@@ -110,5 +110,22 @@
   { "text": "جزاكم الله خير، تم استلام الرد ووصلني الصك", "tone": "neutral", "urgent": false, "intentId": null },
   { "text": "السلام عليكم ورحمة الله وبركاته", "tone": "neutral", "urgent": false, "intentId": null },
   { "text": "أرجو سرعة الرد، الموضوع مستعجل وينتهي الأجل غداً", "tone": "request", "urgent": true, "intentId": null },
-  { "text": "الموضوع عاجل ويحتاج حسماً سريعاً", "tone": "neutral", "urgent": true, "intentId": null }
+  { "text": "الموضوع عاجل ويحتاج حسماً سريعاً", "tone": "neutral", "urgent": true, "intentId": null },
+  { "text": "أرجو اعتماد الجلسة المنعقدة يوم الأحد", "tone": "request", "urgent": false, "intentId": "session-approval" },
+  { "text": "الجلسة انعقدت من أسبوع وما اعتمدت إلى الآن", "tone": "complaint", "urgent": false, "intentId": "session-approval" },
+  { "text": "أطلب اعتماد صك الحكم في القضية رقم 4471230", "tone": "request", "urgent": false, "intentId": "deed-approval" },
+  { "text": "صدر الحكم من أسبوعين والصك ما صدر، متى يصدر الصك؟", "tone": "inquiry", "urgent": false, "intentId": "deed-approval" },
+  { "text": "أطلب تعديل موعد الجلسة لأن عندي ارتباط", "tone": "request", "urgent": false, "intentId": "session-postpone" },
+  { "text": "قدمت التماس إعادة النظر ومتى يتم البت في الالتماس؟", "tone": "inquiry", "urgent": false, "intentId": "review-petition" },
+  { "text": "كيف أقدم التماس على الحكم النهائي؟", "tone": "inquiry", "urgent": false, "intentId": "review-petition" },
+  { "text": "فيه خطأ مادي في الحكم وأبغى تصحيح الحكم", "tone": "request", "urgent": false, "intentId": "data-correction" },
+  { "text": "منطوق الحكم غير واضح وأطلب تفسير الحكم", "tone": "request", "urgent": false, "intentId": "judgment-interpretation" },
+  { "text": "أبغى أعدل طلباتي في الدعوى وأضيف التعويض", "tone": "request", "urgent": false, "intentId": "amend-claims" },
+  { "text": "كيف أقدم تعديل الطلب الأصلي في الدعوى؟", "tone": "inquiry", "urgent": false, "intentId": "amend-claims" },
+  { "text": "أطلب تحديد موعد في قضية مشطوبة", "tone": "request", "urgent": false, "intentId": "dismissal" },
+  { "text": "انتهت مدة الاعتراض وأطلب التذييل باكتساب القطعية", "tone": "request", "urgent": false, "intentId": "finality-endorsement" },
+  { "text": "هل الحكم اكتسب القطعية؟", "tone": "inquiry", "urgent": false, "intentId": "finality-endorsement" },
+  { "text": "أطلب التذييل بالصيغة التنفيذية على الصك", "tone": "request", "urgent": false, "intentId": "enforcement" },
+  { "text": "أطلب رفع القضية إلى محكمة الاستئناف", "tone": "request", "urgent": false, "intentId": "appeal" },
+  { "text": "أطلب إضافة ممثل في القضية", "tone": "request", "urgent": false, "intentId": "attorney" }
 ]

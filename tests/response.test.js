@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { suggestResponse, improveLanguage } from '../js/response.js';
+import { suggestResponse, improveLanguage, resolveResponse } from '../js/response.js';
 
 const language = {
     openings: ['السلام عليكم ورحمة الله وبركاته،\n\nنشكر لكم تواصلكم.'],
@@ -158,4 +158,63 @@ test('improveLanguage: قاموس فارغ لا يكسر الدالة', () => {
     };
     const out = improveLanguage('نص عادي', lang);
     assert.ok(out.includes('نص عادي'));
+});
+
+const withVariants = {
+    id: 'session-postpone',
+    label: 'تعديل موعد',
+    responseText: 'رد عام.',
+    variants: [
+        { id: 'accepted', label: 'قبول', kind: 'reply', responseText: 'تم قبول الطلب.' },
+        {
+            id: 'support',
+            label: 'دعم',
+            kind: 'tech-support',
+            responseText: 'نأمل من الزملاء في الدعم التقني.',
+        },
+    ],
+};
+
+test('resolveResponse: الرد العام افتراضياً، والحالة المختارة تتقدم، والفهرس الخاطئ يعود للعام', () => {
+    assert.equal(resolveResponse(withVariants).text, 'رد عام.');
+    assert.equal(resolveResponse(withVariants, 0).text, 'تم قبول الطلب.');
+    assert.equal(resolveResponse(withVariants, 1).kind, 'tech-support');
+    assert.equal(resolveResponse(withVariants, 9).variantIndex, -1);
+    assert.equal(
+        resolveResponse({ ...withVariants, defaultVariant: 0 }).variantIndex,
+        0,
+        'defaultVariant من البيانات',
+    );
+    assert.equal(
+        resolveResponse({ ...withVariants, defaultVariant: 0 }, -1).text,
+        'رد عام.',
+        '‎-1 يفرض العام',
+    );
+    assert.equal(resolveResponse(null, null, DEFAULT).text, DEFAULT);
+    assert.equal(
+        resolveResponse({ responseText: 'س', responseKind: 'مجهول' }).kind,
+        'reply',
+        'نوع مجهول = رد',
+    );
+});
+
+test('suggestResponse: حالة «رد» تُصاغ بالافتتاحية والسند النظامي', () => {
+    const articles = [{ number: 'المادة 1/68', title: 'طلب الإمهال' }];
+    const out = suggestResponse('رسالة', articles, [withVariants], [], language, DEFAULT, null, 0);
+    assert.ok(out.startsWith(language.openings[0]));
+    assert.ok(out.includes('تم قبول الطلب.'));
+    assert.ok(out.includes('المادة 1/68'));
+});
+
+test('suggestResponse: التعليق الداخلي بلا افتتاحية ولا سند ولا اعتذار، مع رقم المرجع', () => {
+    const articles = [{ number: 'المادة 1/68', title: 'طلب الإمهال' }];
+    const entities = [{ type: 'رقم طلب/مذكرة', value: '4471230' }];
+    const langWithTones = { ...language, toneOpenings: { complaint: 'نعتذر لكم.' }, urgentNote: 'أولوية.' };
+    const tone = { primary: 'complaint', urgent: true };
+    const out = suggestResponse('رسالة', articles, [withVariants], entities, langWithTones, DEFAULT, tone, 1);
+    assert.ok(out.startsWith('نأمل من الزملاء في الدعم التقني.'));
+    assert.ok(out.includes('(المرجع: 4471230)'));
+    for (const absent of ['السلام عليكم', 'المادة 1/68', 'نعتذر لكم.', 'أولوية.', 'التقدير']) {
+        assert.ok(!out.includes(absent), `التعليق الداخلي لا يحوي «${absent}»`);
+    }
 });

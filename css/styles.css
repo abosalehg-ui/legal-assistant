@@ -649,6 +649,42 @@ input[type="text"], input[type="url"] {
 .intent-choice.active { border-color: var(--primary-dark); font-weight: 700; }
 .intent-choice:focus-visible { outline: 3px solid var(--primary-dark); outline-offset: 2px; }
 
+/* حالات الطلب (من دليل الإفادات): نفس أهداف اللمس، بلون محايد يميزها عن المواضيع. */
+.variant-choice {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 2px solid var(--secondary);
+    cursor: pointer;
+    font-family: inherit;
+    min-height: 44px;
+    padding-inline: 0.9rem;
+}
+.variant-choice:hover { background: var(--bg-subtle); }
+.variant-choice.active { background: var(--secondary); color: #1b1b1b; border-color: var(--primary-dark); font-weight: 700; }
+.variant-choice:focus-visible { outline: 3px solid var(--primary-dark); outline-offset: 2px; }
+
+/* تنبيه أن النص تعليق داخلي على التذكرة لا رد للمستفيد. */
+.routing-note {
+    border-inline-start: 4px solid var(--tone-complaint);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    line-height: 1.8;
+}
+.kind-badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: var(--tone-complaint);
+    color: #fff;
+    margin-top: 0.35rem;
+}
+.kind-badge.kind-tech-support { background: var(--primary-dark); }
+
 .analysis-why {
     margin-top: 0.4rem;
     font-size: 0.78rem;

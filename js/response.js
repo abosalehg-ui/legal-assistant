@@ -2,6 +2,51 @@
 
 import { compileMatcher } from './matcher.js';
 
+// أنواع الإفادة كما في دليل الإفادات: ليس كل نص يخرج من الأداة رداً على المستفيد؛
+// بعضه تعليق داخلي على التذكرة يعيدها لغرفة العمليات أو يحوّلها للدعم التقني.
+export const RESPONSE_KINDS = {
+    reply: { icon: '✉️', label: 'رد للمستفيد', note: '' },
+    'ops-return': {
+        icon: '↩️',
+        label: 'إعادة لغرفة العمليات',
+        note: 'تعليق داخلي: تعاد التذكرة لغرفة العمليات لإحالتها للقسم المختص — لا يُرسل للمستفيد.',
+    },
+    'tech-support': {
+        icon: '🛠️',
+        label: 'تحويل للدعم التقني',
+        note: 'تعليق داخلي: تحوَّل التذكرة إلى الدعم التقني مع هذا التعليق — لا يُرسل للمستفيد.',
+    },
+};
+
+export function kindOf(kind) {
+    return RESPONSE_KINDS[kind] ? kind : 'reply';
+}
+
+// يحدد نص الإفادة ونوعها للموضوع والحالة المختارين.
+// variantIndex: ‎-1 = الرد العام للموضوع، رقم = حالة من variants، null/undefined = الحالة
+// الافتراضية في البيانات (defaultVariant) إن وُجدت وإلا الرد العام.
+export function resolveResponse(intent, variantIndex = null, defaultResponse = '') {
+    if (!intent) return { text: defaultResponse, kind: 'reply', variantIndex: -1, variant: null };
+    const variants = Array.isArray(intent.variants) ? intent.variants : [];
+    let index = variantIndex ?? (Number.isInteger(intent.defaultVariant) ? intent.defaultVariant : -1);
+    if (!(index >= 0 && index < variants.length)) index = -1;
+    if (index >= 0) {
+        const variant = variants[index];
+        return { text: variant.responseText || '', kind: kindOf(variant.kind), variantIndex: index, variant };
+    }
+    return {
+        text: intent.responseText || defaultResponse,
+        kind: kindOf(intent.responseKind),
+        variantIndex: -1,
+        variant: null,
+    };
+}
+
+function referenceLine(entities) {
+    const requestRefs = entities.filter(e => e.type === 'رقم طلب/مذكرة');
+    return requestRefs.length > 0 ? '(المرجع: ' + requestRefs.map(r => r.value).join('، ') + ')' : '';
+}
+
 export function suggestResponse(
     message,
     articles,
@@ -10,7 +55,17 @@ export function suggestResponse(
     language,
     defaultResponse = '',
     tone = null,
+    variantIndex = null,
 ) {
+    const resolved = resolveResponse(intents[0], variantIndex, defaultResponse);
+
+    // التعليق الداخلي يُكتب للزملاء كما ورد في الدليل: بلا افتتاحية للمستفيد ولا
+    // سند نظامي ولا فقرة اعتذار — هذه كلها موجهة لمن لن يقرأه.
+    if (resolved.kind !== 'reply') {
+        const ref = referenceLine(entities);
+        return resolved.text + (ref ? '\n\n' + ref : '');
+    }
+
     let response = language.openings[0] + '\n\n';
 
     // النبرة تُكيّف الرد من البيانات لا من الكود: فقرة اعتذارية للشكوى مثلاً
@@ -21,13 +76,10 @@ export function suggestResponse(
     }
 
     // نص الرد يأتي من بيانات النية نفسها (data/intents.json) لا من الكود.
-    const topIntent = intents[0];
-    response += (topIntent && topIntent.responseText) || defaultResponse;
+    response += resolved.text || defaultResponse;
 
-    const requestRefs = entities.filter(e => e.type === 'رقم طلب/مذكرة');
-    if (requestRefs.length > 0) {
-        response += '\n\n(المرجع: ' + requestRefs.map(r => r.value).join('، ') + ')';
-    }
+    const ref = referenceLine(entities);
+    if (ref) response += '\n\n' + ref;
 
     if (articles.length > 0) {
         response += '\n\n📚 السند النظامي:\n';

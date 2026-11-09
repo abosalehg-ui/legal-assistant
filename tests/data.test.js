@@ -157,3 +157,57 @@ test('checkArticle: يعيد سبب الرفض، والرابط غير الآم�
     assert.equal(ok.error, null);
     assert.deepEqual(ok.article.keywords, ['أ', 'ب']);
 });
+
+// سلامة ملفات البيانات الفعلية: أي تعديل يدوي على JSON يمر من هنا قبل أن يصل للموظف.
+const { readFileSync } = await import('node:fs');
+const readData = name => JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
+const KINDS = new Set(['reply', 'ops-return', 'tech-support']);
+
+test('data/articles.json: معرّفات فريدة وكل مادة تجتاز التحقق النوعي بلا تجريد', () => {
+    const articles = readData('articles.json');
+    const ids = articles.map(a => a.id);
+    assert.equal(new Set(ids).size, ids.length, 'معرّف مادة مكرر');
+    assert.ok(articles.length > 44, 'المواد زادت بمواد الأحكام والاعتراض');
+    for (const raw of articles) {
+        const { article, error } = checkArticle(raw, { strictUrl: true });
+        assert.equal(error, null, `مادة غير صالحة: ${raw.id}`);
+        assert.match(article.lastVerified || '', /^\d{4}-\d{2}-\d{2}$/, `lastVerified مفقود: ${raw.id}`);
+    }
+    for (const id of ['166', '171', '173', '187', '200', '201', '202']) {
+        assert.ok(ids.includes(id), `مادة أساسية مفقودة: ${id}`);
+    }
+});
+
+test('data/intents.json: الحالات والأنواع سليمة والحالة الافتراضية ضمن المدى', () => {
+    const { patterns } = readData('intents.json');
+    const ids = patterns.map(p => p.id);
+    assert.equal(new Set(ids).size, ids.length, 'معرّف موضوع مكرر');
+    for (const p of patterns) {
+        assert.ok(p.responseText && p.responseText.trim(), `responseText فارغ: ${p.id}`);
+        if (p.responseKind !== undefined) assert.ok(KINDS.has(p.responseKind), `responseKind مجهول: ${p.id}`);
+        const variants = p.variants || [];
+        const variantIds = variants.map(v => v.id);
+        assert.equal(new Set(variantIds).size, variantIds.length, `حالة مكررة في ${p.id}`);
+        for (const v of variants) {
+            assert.ok(v.id && v.label && v.responseText, `حالة ناقصة في ${p.id}`);
+            assert.ok(KINDS.has(v.kind), `نوع حالة مجهول في ${p.id}: ${v.kind}`);
+        }
+        if (p.defaultVariant !== undefined) {
+            assert.ok(
+                Number.isInteger(p.defaultVariant) &&
+                    p.defaultVariant >= 0 &&
+                    p.defaultVariant < variants.length,
+            );
+        }
+    }
+});
+
+test('data/templates.json: معرّفات فريدة وأنواع معروفة', () => {
+    const templates = readData('templates.json');
+    const ids = templates.map(t => t.id);
+    assert.equal(new Set(ids).size, ids.length);
+    for (const t of templates) {
+        assert.ok(t.name && t.text, `قالب ناقص: ${t.id}`);
+        if (t.kind !== undefined) assert.ok(KINDS.has(t.kind), `نوع قالب مجهول: ${t.id}`);
+    }
+});

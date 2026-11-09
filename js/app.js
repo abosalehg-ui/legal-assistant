@@ -9,7 +9,13 @@ import {
     extractEntities,
     findRelevantArticles,
 } from './analyzer.js';
-import { suggestResponse, improveLanguage, copyToClipboard, fallbackCopy } from './response.js';
+import {
+    suggestResponse,
+    resolveResponse,
+    improveLanguage,
+    copyToClipboard,
+    fallbackCopy,
+} from './response.js';
 import {
     loadSavedResponses,
     addResponse,
@@ -69,7 +75,7 @@ const app = {
     // نتيجة التحليل الحالي في كائن واحد، أو null إن لم يُحلَّل شيء أو مُسح.
     // كانت ثمانية حقول متفرقة يصفّر «مسح» بعضها وينسى بعضها، فيملأ القالب التالي
     // رقم المستفيد السابق. الآن التصفير سطر واحد ولا يمكن أن يكون جزئياً.
-    // { message, keywords, intents, activeIntentIndex, activeIntent, tone, entities, relevantArticles }
+    // { message, keywords, intents, activeIntentIndex, activeIntent, activeVariantIndex, tone, entities, relevantArticles }
     analysis: null,
     outputBackup: null,
 };
@@ -250,6 +256,16 @@ function bindEvents() {
         showToast('أُعيد توليد الرد على الموضوع المختار');
     });
 
+    // اختيار حالة الطلب (قبول/رفض، إعادة لغرفة العمليات...) يعيد توليد الإفادة من الدليل.
+    document.getElementById('analysisContent')?.addEventListener('click', e => {
+        const btn = e.target.closest('[data-variant-index]');
+        if (!btn || !app.analysis) return;
+        const variantIndex = Number(btn.dataset.variantIndex);
+        if (variantIndex === app.analysis.activeVariantIndex) return;
+        applyIntentSelection(app.analysis.activeIntentIndex, variantIndex);
+        if (!selectFirstPlaceholder()) showToast('أُعيدت صياغة الإفادة على الحالة المختارة');
+    });
+
     document.getElementById('savedSearch').addEventListener('input', e => {
         app.archiveFilters.query = e.target.value;
         renderFilteredArchive();
@@ -404,6 +420,7 @@ function analyzeMessage() {
         intents: detectIntent(normalizedMsg, app.intentPatterns),
         activeIntentIndex: 0,
         activeIntent: null,
+        activeVariantIndex: -1,
         tone: detectTone(normalizedMsg, app.toneIndicators),
         entities: extractEntities(message),
         relevantArticles: [],
@@ -418,7 +435,8 @@ function analyzeMessage() {
 
 // يعيد بناء المواد والرد على أساس الموضوع المختار (الأول تلقائياً، أو ما ينقره
 // الموظف). النية المختارة تتصدر القائمة الممررة لأن الترجيح والرد يقرآن أولها.
-function applyIntentSelection(index) {
+// variantIndex: حالة الطلب داخل الموضوع؛ null = الحالة الافتراضية في البيانات.
+function applyIntentSelection(index, variantIndex = null) {
     const analysis = app.analysis;
     if (!analysis) return 0;
     const intents = analysis.intents;
@@ -426,11 +444,13 @@ function applyIntentSelection(index) {
     const ordered = intents.length ? [intents[active], ...intents.filter((_, i) => i !== active)] : [];
 
     const relevantArticles = findRelevantArticles(store.getArticles(), analysis.keywords, ordered);
+    const resolved = resolveResponse(ordered[0], variantIndex, app.defaultResponse);
 
     renderAnalysis({
         foundKeywords: analysis.keywords,
         detectedIntents: intents,
         activeIntentIndex: active,
+        activeVariantIndex: resolved.variantIndex,
         tone: analysis.tone,
         entities: analysis.entities,
     });
@@ -438,17 +458,21 @@ function applyIntentSelection(index) {
 
     analysis.activeIntentIndex = active;
     analysis.activeIntent = ordered[0] || null;
+    analysis.activeVariantIndex = resolved.variantIndex;
     analysis.relevantArticles = relevantArticles;
 
     setOutput(
-        suggestResponse(
-            analysis.message,
-            relevantArticles,
-            ordered,
-            analysis.entities,
-            app.language,
-            app.defaultResponse,
-            analysis.tone,
+        fillReferences(
+            suggestResponse(
+                analysis.message,
+                relevantArticles,
+                ordered,
+                analysis.entities,
+                app.language,
+                app.defaultResponse,
+                analysis.tone,
+                resolved.variantIndex,
+            ),
         ),
     );
     return relevantArticles.length;
@@ -630,26 +654,29 @@ function useTemplate(id) {
     const template = app.templates.find(t => t.id === id);
     if (!template) return;
 
-    // تعبئة رقم الطلب/الدعوى تلقائياً من آخر تحليل. التواريخ تُترك للموظف عمداً:
-    // تاريخ الرسالة الواردة ليس بالضرورة التاريخ المقصود في الرد الرسمي.
-    let text = template.text;
-    const ref = app.analysis && app.analysis.entities.find(en => en.type === 'رقم طلب/مذكرة');
-    if (ref) {
-        text = text.replaceAll('[رقم الطلب]', ref.value).replaceAll('[رقم الدعوى]', ref.value);
-    }
-
-    setOutput(text);
+    setOutput(fillReferences(template.text));
     switchTab('write');
 
-    const placeholder = text.match(/\[[^\]]+\]/);
-    if (placeholder) {
-        const output = document.getElementById('finalOutput');
-        output.focus();
-        output.setSelectionRange(placeholder.index, placeholder.index + placeholder[0].length);
-        showToast('تم تحميل القالب — عبّئ الحقول الموضوعة بين أقواس [ ]');
-    } else {
-        showToast('تم تحميل القالب (يمكنك تعديله)');
-    }
+    if (!selectFirstPlaceholder()) showToast('تم تحميل القالب (يمكنك تعديله)');
+}
+
+// تعبئة رقم الطلب/الدعوى تلقائياً من آخر تحليل. التواريخ تُترك للموظف عمداً:
+// تاريخ الرسالة الواردة ليس بالضرورة التاريخ المقصود في الرد الرسمي.
+function fillReferences(text) {
+    const ref = app.analysis && app.analysis.entities.find(en => en.type === 'رقم طلب/مذكرة');
+    if (!ref) return text;
+    return text.replaceAll('[رقم الطلب]', ref.value).replaceAll('[رقم الدعوى]', ref.value);
+}
+
+// يحدد أول حقل [ ] في الرد النهائي ليكتب الموظف فوقه مباشرة. يعيد true إن وُجد حقل.
+function selectFirstPlaceholder() {
+    const output = document.getElementById('finalOutput');
+    const placeholder = output.value.match(/\[[^\]]+\]/);
+    if (!placeholder) return false;
+    output.focus();
+    output.setSelectionRange(placeholder.index, placeholder.index + placeholder[0].length);
+    showToast('عبّئ الحقول الموضوعة بين أقواس [ ]');
+    return true;
 }
 
 function switchTab(tab) {

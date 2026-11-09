@@ -79,6 +79,11 @@ export function detectIntent(normalizedText, intentPatterns) {
             label: pattern.label,
             boostCategories: pattern.boostCategories || {},
             responseText: pattern.responseText || '',
+            // حالات الإفادة (قبول/رفض، رد للمستفيد/إعادة لغرفة العمليات...) تمر كما هي
+            // من البيانات؛ اختيار الحالة وصياغتها في response.js.
+            responseKind: pattern.responseKind || 'reply',
+            variants: Array.isArray(pattern.variants) ? pattern.variants : [],
+            defaultVariant: Number.isInteger(pattern.defaultVariant) ? pattern.defaultVariant : -1,
             score: weight * pattern.priority,
             matches: matched.size,
             // العبارات التي أدّت للتصنيف — تُعرض للموظف ليحكم بنفسه على صحة التصنيف

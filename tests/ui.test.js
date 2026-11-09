@@ -270,3 +270,57 @@ test('setBusy: يضبط aria-busy وصنف التحميل', () => {
     assert.equal(document.getElementById('mainContainer').getAttribute('aria-busy'), 'false');
     assert.ok(!document.body.classList.contains('app-loading'));
 });
+
+test('renderAnalysis: حالات الطلب تُعرض أزراراً، والتعليق الداخلي يُنبَّه عليه', () => {
+    const intent = {
+        id: 'copy-request',
+        label: 'طلب صورة صك أو حكم',
+        matchedTerms: ['نسخة من الصك'],
+        responseKind: 'reply',
+        variants: [
+            { id: 'ops', label: 'إعادة <b>لغرفة</b> العمليات', kind: 'ops-return', responseText: 'نص' },
+        ],
+    };
+    const base = {
+        tone: { primary: 'request', urgent: false },
+        detectedIntents: [intent],
+        entities: [],
+        foundKeywords: [],
+    };
+
+    renderAnalysis({ ...base, activeVariantIndex: -1 });
+    const content = document.getElementById('analysisContent');
+    const buttons = content.querySelectorAll('[data-variant-index]');
+    assert.equal(buttons.length, 2, 'رد عام + حالة واحدة');
+    assert.equal(buttons[0].getAttribute('aria-pressed'), 'true');
+    assert.ok(!content.querySelector('.routing-note'), 'الرد العام رد للمستفيد بلا تنبيه');
+    assert.ok(!content.innerHTML.includes('<b>'), 'تسمية الحالة مُهرَّبة');
+
+    renderAnalysis({ ...base, activeVariantIndex: 0 });
+    assert.equal(content.querySelector('[data-variant-index="0"]').getAttribute('aria-pressed'), 'true');
+    assert.ok(content.querySelector('.routing-note').textContent.includes('غرفة العمليات'));
+});
+
+test('renderAnalysis: موضوع بلا حالات لا يعرض قسم الحالة، ونوعه الداخلي يُنبَّه عليه', () => {
+    renderAnalysis({
+        tone: { primary: 'request', urgent: false },
+        detectedIntents: [
+            { id: 'x', label: 'قطعية', matchedTerms: [], responseKind: 'ops-return', variants: [] },
+        ],
+        entities: [],
+        foundKeywords: [],
+    });
+    const content = document.getElementById('analysisContent');
+    assert.equal(content.querySelectorAll('[data-variant-index]').length, 0);
+    assert.ok(content.querySelector('.routing-note'));
+});
+
+test('renderTemplates: القالب الداخلي يحمل شارة نوعه والرد العادي بلا شارة', () => {
+    renderTemplates([
+        { id: 1, icon: '📄', name: 'رد', text: 'نص' },
+        { id: 2, icon: '↩️', name: 'إعادة', text: 'نص', kind: 'ops-return' },
+    ]);
+    const cards = document.querySelectorAll('#templatesGrid .template-card');
+    assert.equal(cards[0].querySelector('.kind-badge'), null);
+    assert.ok(cards[1].querySelector('.kind-badge').textContent.includes('غرفة العمليات'));
+});
