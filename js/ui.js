@@ -2,6 +2,7 @@
 
 import { isSafeUrl } from './data.js';
 import { formatNumber, fileStamp, isStaleVerification } from './format.js';
+import { RESPONSE_KINDS, kindOf } from './response.js';
 
 export function escapeHtml(text) {
     return String(text ?? '')
@@ -201,6 +202,7 @@ export function renderAnalysis(analysis) {
             html += '<div class="analysis-why">التصنيف غير دقيق؟ اختر موضوعاً آخر لإعادة توليد الرد.</div>';
         }
         html += '</div>';
+        html += renderVariantChoices(chosen, analysis.activeVariantIndex ?? -1);
     } else {
         // الصمت هنا كان يُقرأ كعطل: الرد الافتراضي يظهر بلا سبب معلن.
         html +=
@@ -227,6 +229,45 @@ export function renderAnalysis(analysis) {
 
     content.innerHTML = html;
     box.classList.add('show');
+}
+
+function kindBadge(kind) {
+    const info = RESPONSE_KINDS[kindOf(kind)];
+    return `<span class="kind-badge kind-${escapeHtml(kindOf(kind))}">${info.icon} ${escapeHtml(info.label)}</span>`;
+}
+
+// حالات الإفادة للموضوع المختار (من دليل الإفادات): الطلب الواحد قد تكون إفادته
+// قبولاً أو رفضاً، أو رداً للمستفيد أو تعليقاً داخلياً يعيد التذكرة. الموظف وحده يعرف
+// ما انتهى إليه الطلب، فتُعرض الحالات أزراراً يختار منها بدل أن يُخمَّن له.
+export function renderVariantChoices(intent, activeVariantIndex = -1) {
+    if (!intent) return '';
+    const variants = Array.isArray(intent.variants) ? intent.variants : [];
+    const activeKind =
+        activeVariantIndex >= 0 && variants[activeVariantIndex]
+            ? kindOf(variants[activeVariantIndex].kind)
+            : kindOf(intent.responseKind);
+
+    let html = '';
+    if (variants.length > 0) {
+        html += '<div class="analysis-item"><strong>حالة الطلب:</strong><div class="tag-list">';
+        const choices = [{ label: 'رد عام', kind: intent.responseKind, index: -1 }].concat(
+            variants.map((v, index) => ({ label: v.label, kind: v.kind, index })),
+        );
+        choices.forEach(c => {
+            const active = c.index === activeVariantIndex;
+            const info = RESPONSE_KINDS[kindOf(c.kind)];
+            html +=
+                `<button type="button" class="tag variant-choice${active ? ' active' : ''}"` +
+                ` data-variant-index="${c.index}" aria-pressed="${active}"` +
+                ` title="${escapeHtml(info.label)}">${info.icon} ${escapeHtml(c.label)}</button>`;
+        });
+        html +=
+            '</div><div class="analysis-why">اختر ما انتهى إليه الطلب لتُولَّد الإفادة المعتمدة في الدليل.</div></div>';
+    }
+    if (activeKind !== 'reply') {
+        html += `<div class="analysis-item routing-note" role="note">${kindBadge(activeKind)} ${escapeHtml(RESPONSE_KINDS[activeKind].note)}</div>`;
+    }
+    return html;
 }
 
 // شارة تاريخ آخر تحقق: في أداة قانونية، عمر التحقق من نص المادة معلومة تخص الموظف.
@@ -288,6 +329,7 @@ export function renderTemplates(templates) {
                 `<div class="template-card" data-id="${escapeHtml(template.id)}" role="button" tabindex="0">
             <div class="template-icon">${escapeHtml(template.icon)}</div>
             <div class="template-name">${escapeHtml(template.name)}</div>
+            ${template.kind && kindOf(template.kind) !== 'reply' ? kindBadge(template.kind) : ''}
         </div>`,
         )
         .join('');
