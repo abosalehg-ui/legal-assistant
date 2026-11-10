@@ -9,7 +9,7 @@
 // بصمة محتوى CORE_ASSETS — لا تُعدَّل يدوياً، بل بـ  npm run sw:hash
 // تغيّرها يغيّر بايتات هذا الملف، فيثبّت المتصفح الـ SW الجديد ويمسح الكاش القديم.
 // tests/sw.test.js يفشل إذا تغيّر أي أصل ولم تُحدَّث (انظر scripts/sw-hash.mjs).
-const ASSETS_HASH = '34029a24ccae';
+const ASSETS_HASH = '4f6ce2a6449e';
 const CACHE_NAME = `legal-assistant-v4-${ASSETS_HASH}`;
 
 const CORE_ASSETS = [

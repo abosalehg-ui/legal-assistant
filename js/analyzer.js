@@ -148,6 +148,12 @@ const PHONE_PATTERNS = [/(?:\+|00)?966[\s-]?5\d(?:[\s-]?\d){7}/g, /\b05(?:[\s-]?
 const REF_CONTEXT =
     /(?:رقم|برقم|طلب|معامله|معاملة|قضيه|قضية|دعوى|مذكره|مذكرة|صك|ملف|بلاغ|شكوى)\s*(?:[:#]|رقم\s*)?\s*(\d{4,})/g;
 
+// أرقام تُذكر في الرسالة وليست رقم الطلب: النوع ثم النمط (الرقم في المجموعة الأولى).
+const NON_REF_CONTEXT = [
+    ['رقم وكالة', /(?:ال)?وكال[ةه]\s*(?:رقم)?\s*[:#]?\s*(\d{4,})/g],
+    ['رقم سجل تجاري', /(?:ال)?سجل\s*(?:ال)?تجاري\s*(?:رقم)?\s*[:#]?\s*(\d{4,})/g],
+];
+
 export function extractEntities(originalText) {
     let text = toLatinDigits(String(originalText));
     const entities = [];
@@ -170,6 +176,14 @@ export function extractEntities(originalText) {
         text = text.replace(pattern, raw => {
             add('رقم جوال', raw.replace(SEPARATORS, '').replace(/^(?:\+|00)/, ''));
             return ' '.repeat(raw.length);
+        });
+    });
+    // رقم الوكالة ورقم السجل التجاري ليسا مرجعاً للطلب: يُلتقطان بنوعهما ويُمحيان قبل النمطين
+    // العامين — وإلا خرج «رقم الوكالة :473633502» في الخطاب الرسمي «(المرجع: 473633502)».
+    NON_REF_CONTEXT.forEach(([type, pattern]) => {
+        text = text.replace(pattern, (raw, number) => {
+            add(type, number);
+            return raw.replace(number, ' '.repeat(number.length));
         });
     });
     (text.match(/\b[12]\d{9}\b/g) || []).forEach(id => add('رقم هوية', id));

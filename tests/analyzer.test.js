@@ -10,6 +10,9 @@ import {
     extractEntities,
     findRelevantArticles,
 } from '../js/analyzer.js';
+import { readFileSync } from 'node:fs';
+
+const PATTERNS = JSON.parse(readFileSync(new URL('../data/intents.json', import.meta.url), 'utf8')).patterns;
 
 test('normalizeArabic: توحيد الهمزات والتاء المربوطة وإزالة التشكيل والتطويل', () => {
     assert.equal(normalizeArabic('إبْلاغ'), 'ابلاغ');
@@ -271,4 +274,33 @@ test('detectIntent: «متى موعد الجلسة» تُصنَّف بالبيا
         const [top] = detectIntent(normalizeArabic(message), intents.patterns);
         assert.equal(top && top.id, 'session-date', message);
     }
+});
+
+test('extractEntities: رقم الوكالة ورقم السجل التجاري بنوعيهما — لا يُكتبان مرجعاً للطلب', () => {
+    const entities = extractEntities('لم يصدر الصك\n\n رقم الوكالة :473633502 وطلبي رقم 4521987');
+    assert.deepEqual(
+        entities.map(e => [e.type, e.value]),
+        [
+            ['رقم وكالة', '473633502'],
+            ['رقم طلب/مذكرة', '4521987'],
+        ],
+    );
+    assert.deepEqual(
+        extractEntities('السجل التجاري رقم 7001234567').map(e => [e.type, e.value]),
+        [['رقم سجل تجاري', '7001234567']],
+    );
+    assert.deepEqual(
+        extractEntities('وكالة رقم ٤٧٣٦٣٣٥٠٢').map(e => [e.type, e.value]),
+        [['رقم وكالة', '473633502']],
+    );
+});
+
+test('detectIntent: «لم يصدر الصك» و«اصدار الصك» ← اعتماد صك الحكم، ولو ذُكر رقم الوكالة', () => {
+    const intents = detectIntent(
+        normalizeArabic(
+            'لم يصدر الصك رغم ان اخر جلسة رفعت بتاريخ 28/12/1447هـ رقم الوكالة :473633502 اصدار الصك',
+        ),
+        PATTERNS,
+    );
+    assert.equal(intents[0].id, 'deed-approval');
 });
